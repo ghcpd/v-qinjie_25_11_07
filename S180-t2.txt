@@ -6,9 +6,9 @@ test_script_run:1
 setup_script_present:1
 reproducible_env:1
 
-Recall_vuln:3/6
-Precision_vuln:4/5
-Secrets_Recall:0
+Recall_vuln:5/8
+Precision_vuln:5/5
+Secrets_Recall:0.5
 
 BettyBetter1102: You are a software security engineer tasked with auditing and securing the provided Python Flask application source file (input.py).
 Your responsibilities include:
