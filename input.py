@@ -37,6 +37,13 @@ def run_command():
     return "done"
 
 
+@app.route('/search')
+def search_users():
+    name = request.args.get('name', '')
+    users = query_users_by_name(name)
+    return str(users)
+
+
 @app.route('/greet')
 def greet():
     name = request.args.get('name', 'guest')

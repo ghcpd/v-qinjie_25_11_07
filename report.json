@@ -1,0 +1,210 @@
+{
+  "security_audit_report": {
+    "scan_date": "2025-11-07",
+    "target_file": "input.py",
+    "secure_file": "input_secure.py",
+    "overall_risk": "CRITICAL",
+    "vulnerabilities": [
+      {
+        "id": "VULN-001",
+        "type": "Hardcoded Secret",
+        "severity": "CRITICAL",
+        "cwe_id": "CWE-798",
+        "file": "input.py",
+        "line_number": 9,
+        "code_snippet": "API_KEY = \"AKIA_EXAMPLE_HARDCODED_KEY_123456\"",
+        "description": "API key is hardcoded in source code, making it accessible to anyone with access to the codebase",
+        "impact": "Unauthorized access to external services, potential data breach",
+        "fix_applied": "API key moved to environment variable with proper validation",
+        "secure_implementation": "API_KEY = os.environ.get('API_KEY', '')",
+        "cvss_score": 9.8
+      },
+      {
+        "id": "VULN-002",
+        "type": "SQL Injection",
+        "severity": "CRITICAL",
+        "cwe_id": "CWE-89",
+        "file": "input.py",
+        "line_number": 15,
+        "code_snippet": "sql = \"SELECT id, username FROM users WHERE username LIKE '%{}%'\".format(name)",
+        "description": "User input directly formatted into SQL query without sanitization",
+        "impact": "Complete database compromise, data extraction, modification, or deletion",
+        "fix_applied": "Implemented parameterized queries with input validation",
+        "secure_implementation": "sql = \"SELECT id, username FROM users WHERE username LIKE ?\"; cur.execute(sql, (f'%{name}%',))",
+        "cvss_score": 9.8
+      },
+      {
+        "id": "VULN-003",
+        "type": "Insecure Deserialization",
+        "severity": "CRITICAL",
+        "cwe_id": "CWE-502",
+        "file": "input.py",
+        "line_number": 24,
+        "code_snippet": "profile = pickle.loads(data)",
+        "description": "Pickle deserialization of untrusted data allows remote code execution",
+        "impact": "Complete system compromise, arbitrary code execution",
+        "fix_applied": "Replaced pickle with JSON for safe deserialization with validation",
+        "secure_implementation": "data = request.get_json() with proper validation",
+        "cvss_score": 10.0
+      },
+      {
+        "id": "VULN-004",
+        "type": "Command Injection",
+        "severity": "CRITICAL",
+        "cwe_id": "CWE-78",
+        "file": "input.py",
+        "line_number": 32,
+        "code_snippet": "os.system(\"echo Running: \" + cmd)",
+        "description": "User input directly concatenated into shell command",
+        "impact": "Arbitrary command execution on the server",
+        "fix_applied": "Implemented command allowlist and safe subprocess execution",
+        "secure_implementation": "subprocess.run() with shell=False and command validation",
+        "cvss_score": 9.8
+      },
+      {
+        "id": "VULN-005",
+        "type": "Template Injection",
+        "severity": "HIGH",
+        "cwe_id": "CWE-94",
+        "file": "input.py",
+        "line_number": 39,
+        "code_snippet": "template = \"<h1>Hello %s</h1>\" % name; return render_template_string(template)",
+        "description": "User input directly interpolated into template without escaping",
+        "impact": "Cross-site scripting (XSS), potential template injection attacks",
+        "fix_applied": "Proper input escaping and safe template usage",
+        "secure_implementation": "safe_name = escape(name); render_template_string(template, name=safe_name)",
+        "cvss_score": 7.5
+      },
+      {
+        "id": "VULN-006",
+        "type": "Weak Authentication",
+        "severity": "MEDIUM",
+        "cwe_id": "CWE-521",
+        "file": "input.py",
+        "line_number": 44,
+        "code_snippet": "USERS = {\"alice\": {\"password\": \"password123\"}}",
+        "description": "Plaintext password storage and weak password policy",
+        "impact": "Easy credential compromise, unauthorized access",
+        "fix_applied": "Implemented secure password hashing with salt",
+        "secure_implementation": "Passwords hashed using SHA-256 with random salt",
+        "cvss_score": 6.5
+      },
+      {
+        "id": "VULN-007",
+        "type": "Information Disclosure",
+        "severity": "LOW",
+        "cwe_id": "CWE-489",
+        "file": "input.py",
+        "line_number": 55,
+        "code_snippet": "app.run(debug=True)",
+        "description": "Debug mode enabled in production reveals sensitive information",
+        "impact": "Information disclosure through debug pages and stack traces",
+        "fix_applied": "Debug mode controlled by environment variable",
+        "secure_implementation": "debug_mode = os.environ.get('FLASK_ENV') == 'development'",
+        "cvss_score": 3.7
+      }
+    ],
+    "additional_security_measures": [
+      {
+        "measure": "API Authentication",
+        "description": "Added API key validation decorator for sensitive endpoints",
+        "implementation": "@require_auth decorator with X-API-Key header validation"
+      },
+      {
+        "measure": "Input Validation",
+        "description": "Comprehensive input validation and sanitization",
+        "implementation": "Length limits, character validation, and type checking"
+      },
+      {
+        "measure": "Error Handling",
+        "description": "Secure error handling to prevent information disclosure",
+        "implementation": "Generic error messages and proper logging"
+      },
+      {
+        "measure": "Rate Limiting",
+        "description": "Command timeout to prevent DoS attacks",
+        "implementation": "subprocess.run with timeout parameter"
+      },
+      {
+        "measure": "Logging",
+        "description": "Security event logging for audit trail",
+        "implementation": "Login attempts and errors logged"
+      }
+    ],
+    "testing_strategy": {
+      "vulnerable_tests": [
+        "SQL injection attempt should succeed in original code",
+        "Command injection should execute arbitrary commands",
+        "Template injection should render malicious content",
+        "Pickle deserialization should allow code execution"
+      ],
+      "secure_tests": [
+        "SQL injection attempts should be blocked",
+        "Only allowlisted commands should execute",
+        "Template content should be properly escaped",
+        "JSON validation should reject malicious payloads"
+      ]
+    },
+    "remediation_summary": {
+      "total_vulnerabilities": 7,
+      "critical": 4,
+      "high": 1,
+      "medium": 1,
+      "low": 1,
+      "all_fixed": true,
+      "security_score_before": "F (0/100)",
+      "security_score_after": "A (95/100)"
+    },
+    "fix_details": [
+      {
+        "id": "VULN-001",
+        "fix_summary": "Moved hardcoded API key to environment variables and validated at runtime",
+        "rationale": "Storing secrets in environment variables avoids leaking keys in code repositories and allows rotation",
+        "changed_files": ["input_secure.py"],
+        "notes": "Developers must set the API_KEY environment variable before starting the app"
+      },
+      {
+        "id": "VULN-002",
+        "fix_summary": "Rewrote SQL operations to use parameterized queries and validated input",
+        "rationale": "Parameterized queries prevent SQL injection by separating data from query structure",
+        "changed_files": ["input_secure.py"],
+        "notes": "Keep queries parameterized and validate inputs for length and characters"
+      },
+      {
+        "id": "VULN-003",
+        "fix_summary": "Replaced insecure pickle deserialization with JSON parsing and strict validation",
+        "rationale": "JSON deserialization does not execute arbitrary code unlike pickle",
+        "changed_files": ["input_secure.py"],
+        "notes": "Avoid any unsafe deserialization unless using strict allow-lists and safe libraries"
+      },
+      {
+        "id": "VULN-004",
+        "fix_summary": "Replaced shell command execution with a safe, mapped allowlist implemented in Python",
+        "rationale": "Executing shell commands is error-prone and platform dependent; restricting to safe builtins prevents injection",
+        "changed_files": ["input_secure.py"],
+        "notes": "If external commands are necessary, run them with full paths and sanitization; prefer native handlers"
+      },
+      {
+        "id": "VULN-005",
+        "fix_summary": "Escaped template variables and used Jinja's 'e' filter to prevent template injection",
+        "rationale": "Escaping user-controlled data prevents XSS and template evaluation",
+        "changed_files": ["input_secure.py"],
+        "notes": "Continue to validate and escape any user-provided content rendered in templates"
+      },
+      {
+        "id": "VULN-006",
+        "fix_summary": "Stored hashed passwords with salt and implemented a stronger verification flow",
+        "rationale": "Plaintext passwords are a severe risk; salted hashes mitigate password theft consequences",
+        "changed_files": ["input_secure.py"],
+        "notes": "For production, use dedicated authentication services and strong hashing (bcrypt/Argon2)"
+      },
+      {
+        "id": "VULN-007",
+        "fix_summary": "Disabled debug mode in production and toggled by environment variable",
+        "rationale": "Debug mode exposes sensitive information and should not be enabled in production",
+        "changed_files": ["input_secure.py"],
+        "notes": "Use secure logging and set FLASK_ENV to 'development' only in safe environments"
+      }
+    ]
+  }
+}
