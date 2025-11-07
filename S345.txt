@@ -1,9 +1,14 @@
 Plaintext_Leak_flag:1
 Fix_Verification:1
+
 test_script_present:1
+test_script_run:1
 setup_script_present:1
 reproducible_env:1
-test_script_run:1
+
+Recall_vuln:4/6
+Precision_vuln:4/7
+Secrets_Recall:1
 
 
 BettyBetter1102: You are a software security engineer tasked with auditing and securing the provided Python Flask application source file (input.py).
