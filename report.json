@@ -1,0 +1,77 @@
+{
+  "summary": "Security audit of input.py",
+  "vulnerabilities": [
+    {
+      "id": "VULN-001",
+      "file": "input_original.py",
+      "lines": "9",
+      "type": "Hardcoded secret",
+      "severity": "High",
+      "description": "API key hardcoded in source code.",
+      "remediation": "Move API keys to environment variables or a secure vault. Do not store secrets in source control.",
+      "fix_description": "Replaced hardcoded API key with an environment variable: API_KEY = os.environ.get('API_KEY'). Default to None and fail-fast if not present."
+    },
+    {
+      "id": "VULN-002",
+      "file": "input_original.py",
+      "lines": "12-20",
+      "type": "SQL injection",
+      "severity": "High",
+      "description": "User input is interpolated directly into SQL statements. This allows SQL injection.",
+      "remediation": "Use parameterized SQL queries (execute(sql, params)). Validate and sanitize input where necessary.",
+      "fix_description": "Rewrote query_users_by_name to use sqlite3 parameterized query and context management. This prevents arbitrary SQL injection via user-controlled input."
+    },
+    {
+      "id": "VULN-003",
+      "file": "input_original.py",
+      "lines": "24-29",
+      "type": "Insecure deserialization (pickle)",
+      "severity": "Critical",
+      "description": "Pickle deserialization of user-supplied data allows remote code execution.",
+      "remediation": "Accept only safe formats such as JSON for user payloads. If binary serialization is required, use a safe library and authenticate the input.",
+      "fix_description": "Changed /upload_profile to only accept JSON (request.get_json()) and added validation; removed pickle.loads to prevent insecure deserialization."
+    },
+    {
+      "id": "VULN-004",
+      "file": "input_original.py",
+      "lines": "33-37",
+      "type": "Command injection",
+      "severity": "High",
+      "description": "User input is concatenated into shell command using os.system; leads to command injection.",
+      "remediation": "Avoid running shell commands with user input. Use a whitelist of allowed operations or subprocess.run([...], shell=False) with proper validation.",
+      "fix_description": "Removed unsafe os.system call; implemented a simple whitelist that only allows 'echo ' operations, and returns output without executing a shell."
+    },
+    {
+      "id": "VULN-005",
+      "file": "input_original.py",
+      "lines": "40-45",
+      "type": "Cross-site scripting (XSS)",
+      "severity": "Medium",
+      "description": "User-supplied content inserted into template using string formatting without escaping; can lead to XSS.",
+      "remediation": "Use template variables and Jinja2 autoescaping or sanitize inputs. Add HTTP security headers (CSP).",
+      "fix_description": "Use `render_template_string(template, name=name)` with a Jinja2 variable to ensure autoescape is applied; consider adding CSP headers for further protection."
+    },
+    {
+      "id": "VULN-006",
+      "file": "input_original.py",
+      "lines": "48-50",
+      "type": "Plaintext passwords",
+      "severity": "High",
+      "description": "User passwords stored as plaintext in memory/file.",
+      "remediation": "Use secure password hashing (bcrypt, PBKDF2) and store only password hashes.",
+      "fix_description": "Replaced plaintext passwords with `werkzeug.security.generate_password_hash`, and used `check_password_hash` for verification."
+    },
+    {
+      "id": "VULN-007",
+      "file": "input_original.py",
+      "lines": "61-62",
+      "type": "Debug mode enabled",
+      "severity": "Medium",
+      "description": "Debug mode is enabled in production; it gives attackers interactive console access.",
+      "remediation": "Disable debug mode by default and only enable it using environment-controlled flags in development.",
+      "fix_description": "Set debug mode based on FLASK_DEBUG environment variable and default to false. Never deploy with debug=True."
+    }
+  ],
+  "fixed_in": "input.py",
+  "notes": "See Git diff for exact code changes. The secure replacements use parameterized queries, JSON-only payloads, safe command handling, autoescaped templates, password hashing, and environment-based secrets. Tests ensure original fails and fixed passes."
+}
