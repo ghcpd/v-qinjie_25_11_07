@@ -1,0 +1,54 @@
+{
+  "summary": "Security audit and fixes for input.py",
+  "vulnerabilities": [
+    {
+      "id": "VULN-SQL-INJECTION",
+      "severity": "High",
+      "file": "input.py",
+      "lines": "10-17",
+      "description": "Unsanitized SQL with string formatting could allow SQL injection.",
+      "fix": "Use parameterized queries with placeholders.",
+      "notes": "Replaced string formatting with parameterized execute. This prevents user input from changing the SQL structure by sending payloads that would otherwise break out of string context and alter WHERE clauses.",
+    },
+    {
+      "id": "VULN-PICKLE-RCE",
+      "severity": "Critical",
+      "file": "input.py",
+      "lines": "20-26",
+      "description": "Unpickling arbitrary user-supplied data leads to remote code execution.",
+      "fix": "Accept JSON instead of pickle for uploaded profiles.",
+      "notes": "Added validation to only accept JSON objects. Rejecting pickled payloads removes the ability for an attacker to send serialized data that executes arbitrary code on deserialization.",
+    },
+    {
+      "id": "VULN-CMD-INJECTION",
+      "severity": "High",
+      "file": "input.py",
+      "lines": "29-34",
+      "description": "Executing shell with concatenated user input can run arbitrary commands.",
+      "fix": "Whitelisted allowed commands and execute without shell to avoid injection.",
+      "notes": "Added ALLOWED_COMMANDS set and os.spawnlp to run safely. This avoids shell interpretation and limits the server to only run pre-approved commands with explicit arguments.",
+    },
+    {
+      "id": "VULN-XSS",
+      "severity": "Medium",
+      "file": "input.py",
+      "lines": "37-40",
+      "description": "User input is rendered into HTML without escaping, enabling XSS.",
+      "fix": "Escape user input using Flask escape helper.",
+      "notes": "greet endpoint now returns escaped name. We use markupsafe escape to convert special HTML characters to entities and prevent injection of script tags.",
+    },
+    {
+      "id": "VULN-HARDCODED-SECRET",
+      "severity": "High",
+      "file": "input.py",
+      "lines": "6",
+      "description": "Hardcoded API key found in source.",
+      "fix": "Move secrets to environment variables and do not hardcode.",
+      "notes": "API_KEY read from environment now. Avoid committing secrets to source control and use environment variables or secret managers."
+    }
+  ],
+  "tests": {
+    "commands": "pytest -q",
+    "reports": "logs/test_run.log"
+  }
+}
