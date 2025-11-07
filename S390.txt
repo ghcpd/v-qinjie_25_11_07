@@ -6,9 +6,9 @@ test_script_run:1
 setup_script_present:1
 reproducible_env:1
 
-Recall_vuln:4/6
-Precision_vuln:4/7
-Secrets_Recall:0
+Recall_vuln:7/8
+Precision_vuln:7/7
+Secrets_Recall:1
 
 
 
