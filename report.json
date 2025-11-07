@@ -1,0 +1,72 @@
+{
+  "summary": "Security audit and remediation report for input.py",
+  "vulnerabilities": [
+    {
+      "id": "VULN-SQLI-001",
+      "file": "input_original.py",
+      "lines": [16,17,18],
+      "title": "SQL Injection via string-formatted SQL",
+      "severity": "high",
+      "description": "Unsafely formats user input into SQL query allowing SQL injection.",
+      "remediation": "Use parameterized queries (prepared statements) to pass user input as parameters.",
+      "fixed_in": "input.py",
+      "fix_description": "Replaced string formatting SQL with parameterized query using ? and passing (f'%{name}%',)."
+    },
+    {
+      "id": "VULN-PICKLE-002",
+      "file": "input_original.py",
+      "lines": [24,26,27,28],
+      "title": "Unsafe deserialization with pickle",
+      "severity": "critical",
+      "description": "Loading pickled data from untrusted sources can lead to arbitrary code execution.",
+      "remediation": "Do not accept pickle from untrusted clients. Use JSON and validate the structure.",
+      "fixed_in": "input.py",
+      "fix_description": "Replaced pickle.loads with request.get_json and validate that profile is a dict."
+    },
+    {
+      "id": "VULN-CMD-003",
+      "file": "input_original.py",
+      "lines": [33,34,35,36,37],
+      "title": "Command injection via os.system",
+      "severity": "high",
+      "description": "Concatenates user input into shell command and executes it. Allows command injection.",
+      "remediation": "Disallow arbitrary shell execution or use subprocess with a strict whitelist and no shell=True.",
+      "fixed_in": "input.py",
+      "fix_description": "Added a command whitelist and used subprocess.run without shell to avoid injection."
+    },
+    {
+      "id": "VULN-XSS-004",
+      "file": "input_original.py",
+      "lines": [41,43,44,45,46],
+      "title": "Reflected XSS via render_template_string",
+      "severity": "medium",
+      "description": "User input inserted into template without escaping leading to XSS when rendered.",
+      "remediation": "Use Flask templates (which escape by default) and avoid render_template_string with raw user input.",
+      "fixed_in": "input.py",
+      "fix_description": "Switched to render_template with a template file which uses automatic escaping."
+    },
+    {
+      "id": "VULN-CRED-005",
+      "file": "input_original.py",
+      "lines": [10,49,50],
+      "title": "Hardcoded API key and plaintext password",
+      "severity": "high",
+      "description": "API keys and passwords are stored in source code, increasing risk of leakage.",
+      "remediation": "Use environment variables or a secrets manager; store passwords hashed and salted in a secure DB.",
+      "fixed_in": "input.py",
+      "fix_description": "Removed hardcoded API_KEY usage and replaced plaintext password storage with SHA-256 hashed password and instruction to use proper secrets management."
+    },
+    {
+      "id": "VULN-DEBUG-006",
+      "file": "input_original.py",
+      "lines": [62,63],
+      "title": "Debug mode enabled in production",
+      "severity": "medium",
+      "description": "Running Flask with debug=True may expose interactive debugger and sensitive data.",
+      "remediation": "Control debug via environment variable and ensure debug=False in production.",
+      "fixed_in": "input.py",
+      "fix_description": "Made debug controlled by FLASK_DEBUG env var (defaults to off)."
+    }
+  ],
+  "notes": "See each vulnerability's fix_description for details. Use report_details.json for full explanations."
+}
