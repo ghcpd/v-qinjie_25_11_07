@@ -1,0 +1,153 @@
+{
+  "audit_date": "2025-11-07",
+  "application": "Flask Web Application",
+  "vulnerabilities": [
+    {
+      "id": "VUL-001",
+      "title": "Hardcoded API Key",
+      "severity": "CRITICAL",
+      "category": "Secrets Management",
+      "file": "input.py",
+      "line_number": 10,
+      "description": "API key is hardcoded in source code as 'AKIA_EXAMPLE_HARDCODED_KEY_123456'. This exposes sensitive credentials to anyone with access to the repository.",
+      "vulnerable_code": "API_KEY = \"AKIA_EXAMPLE_HARDCODED_KEY_123456\"",
+      "secure_replacement": "API_KEY = os.environ.get('API_KEY', 'default-dev-key-change-in-production')",
+      "remediation_steps": [
+        "Move API key to environment variables",
+        "Add .env file to .gitignore",
+        "Use a secrets management system in production",
+        "Rotate the hardcoded key immediately"
+      ],
+      "cwe": "CWE-798: Use of Hard-Coded Credentials"
+    },
+    {
+      "id": "VUL-002",
+      "title": "SQL Injection",
+      "severity": "CRITICAL",
+      "category": "Injection Attacks",
+      "file": "input.py",
+      "line_number": 16,
+      "description": "Direct string formatting used in SQL query allows attackers to inject arbitrary SQL commands through the 'name' parameter.",
+      "vulnerable_code": "sql = \"SELECT id, username FROM users WHERE username LIKE '%{}%'\".format(name)",
+      "secure_replacement": "sql = \"SELECT id, username FROM users WHERE username LIKE ?\"\ncur.execute(sql, (f'%{name}%',))",
+      "remediation_steps": [
+        "Use parameterized queries (prepared statements)",
+        "Never concatenate user input into SQL strings",
+        "Use ORM frameworks like SQLAlchemy for additional protection",
+        "Validate and sanitize all user inputs"
+      ],
+      "cwe": "CWE-89: SQL Injection"
+    },
+    {
+      "id": "VUL-003",
+      "title": "Insecure Deserialization (Pickle)",
+      "severity": "CRITICAL",
+      "category": "Deserialization Attacks",
+      "file": "input.py",
+      "line_number": 24,
+      "description": "Using pickle.loads() on user-controlled data enables arbitrary code execution. Pickle can deserialize and execute malicious Python objects.",
+      "vulnerable_code": "profile = pickle.loads(data)",
+      "secure_replacement": "data = request.get_json()\nif not data:\n    return jsonify({\"error\": \"Invalid JSON\"}), 400\nprofile = data",
+      "remediation_steps": [
+        "Replace pickle with JSON for untrusted data",
+        "Implement strict input validation",
+        "Use safe deserialization libraries",
+        "Never deserialize data from untrusted sources"
+      ],
+      "cwe": "CWE-502: Deserialization of Untrusted Data"
+    },
+    {
+      "id": "VUL-004",
+      "title": "OS Command Injection",
+      "severity": "CRITICAL",
+      "category": "Command Injection",
+      "file": "input.py",
+      "line_number": 31,
+      "description": "User input is directly concatenated into os.system() call, allowing command injection attacks.",
+      "vulnerable_code": "os.system(\"echo Running: \" + cmd)",
+      "secure_replacement": "subprocess.run(['echo', 'Running:', cmd], capture_output=True, text=True, timeout=5)",
+      "remediation_steps": [
+        "Use subprocess module instead of os.system()",
+        "Pass commands as list of arguments (not string)",
+        "Implement timeout protection",
+        "Never concatenate user input into shell commands"
+      ],
+      "cwe": "CWE-78: OS Command Injection"
+    },
+    {
+      "id": "VUL-005",
+      "title": "Server-Side Template Injection",
+      "severity": "HIGH",
+      "category": "Injection Attacks",
+      "file": "input.py",
+      "line_number": 38,
+      "description": "User input is directly embedded into template string passed to render_template_string(), enabling template injection attacks.",
+      "vulnerable_code": "template = \"<h1>Hello %s</h1>\" % name\nreturn render_template_string(template)",
+      "secure_replacement": "template = \"<h1>Hello {{ name }}</h1>\"\nreturn render_template_string(template, name=name)",
+      "remediation_steps": [
+        "Use template variables instead of string formatting",
+        "Rely on Jinja2's auto-escaping feature",
+        "Never dynamically construct template strings with user input",
+        "Use static templates from files when possible"
+      ],
+      "cwe": "CWE-1336: Improper Neutralization of Special Elements Used in a Templating Engine"
+    },
+    {
+      "id": "VUL-006",
+      "title": "Weak Password Storage",
+      "severity": "HIGH",
+      "category": "Cryptography",
+      "file": "input.py",
+      "line_numbers": [44, 50],
+      "description": "Passwords are stored in plaintext and compared using direct equality. No hashing or salting is used.",
+      "vulnerable_code": "\"password\": \"password123\"\nif user and user.get(\"password\") == password:",
+      "secure_replacement": "\"password\": generate_password_hash(\"secure_password_123\")\nif user and check_password_hash(user.get(\"password\", \"\"), password):",
+      "remediation_steps": [
+        "Use werkzeug.security.generate_password_hash() for password hashing",
+        "Use werkzeug.security.check_password_hash() for verification",
+        "Never store plaintext passwords",
+        "Consider bcrypt or argon2 for additional security",
+        "Implement password policies and validation"
+      ],
+      "cwe": "CWE-256: Plaintext Storage of a Password"
+    },
+    {
+      "id": "VUL-007",
+      "title": "Debug Mode Enabled in Production",
+      "severity": "MEDIUM",
+      "category": "Configuration",
+      "file": "input.py",
+      "line_number": 52,
+      "description": "Flask debug mode is enabled, exposing sensitive information like stack traces, environment variables, and interactive debugging.",
+      "vulnerable_code": "app.run(debug=True)",
+      "secure_replacement": "debug_mode = os.environ.get('FLASK_DEBUG', 'False') == 'True'\napp.run(debug=debug_mode)",
+      "remediation_steps": [
+        "Disable debug mode in production",
+        "Use environment variables to control debug status",
+        "Implement proper logging instead of debug mode",
+        "Never expose stack traces to end users"
+      ],
+      "cwe": "CWE-489: Active Debug Code"
+    }
+  ],
+  "summary": {
+    "total_vulnerabilities": 7,
+    "critical": 4,
+    "high": 2,
+    "medium": 1,
+    "files_affected": ["input.py"],
+    "recommendation": "All vulnerabilities should be addressed immediately, especially critical severity items. Implement the provided secure replacements and deploy a new version of the application."
+  },
+  "environment_variables_required": [
+    {
+      "name": "API_KEY",
+      "description": "AWS API Key for external service integration",
+      "example": "AKIA_XXXXXXXXXXXXXXXX"
+    },
+    {
+      "name": "FLASK_DEBUG",
+      "description": "Flask debug mode (True/False)",
+      "example": "False"
+    }
+  ]
+}
