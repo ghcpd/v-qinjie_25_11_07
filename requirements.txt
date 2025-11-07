@@ -1,0 +1,5 @@
+Flask>=2.0
+requests
+
+# Optional for password hashing in real deployments
+bcrypt

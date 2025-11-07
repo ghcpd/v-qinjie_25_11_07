@@ -1,0 +1,38 @@
+{
+  "VULN-SQLI-001": {
+    "description": "The function query_users_by_name used Python string formatting to insert user-provided 'name' into an SQL LIKE clause. This allows an attacker to craft input that alters the SQL query semantics, potentially exposing or modifying data.",
+    "lines": [16,17,18],
+    "fix": "Replaced with a parameterized query: cur.execute(\"SELECT id, username FROM users WHERE username LIKE ?\", (f\"%{name}%\",)) which avoids SQL injection by separating code from data.",
+    "risk": "High. Direct DB compromise or data exfiltration."
+  },
+  "VULN-PICKLE-002": {
+    "description": "The /upload_profile endpoint directly deserialized request.data using pickle.loads. Pickle can execute arbitrary code during deserialization, leading to remote code execution.",
+    "lines": [24,26,27,28],
+    "fix": "Accept only JSON via request.get_json(force=True) and validate the resulting object. Reject other content types.",
+    "risk": "Critical. Remote code execution."
+  },
+  "VULN-CMD-003": {
+    "description": "The /run endpoint concatenated user input into a shell command passed to os.system, enabling command injection.",
+    "lines": [33,34,35,36,37],
+    "fix": "Introduce a whitelist of allowed commands and use subprocess.run with a list of args and shell disabled. This prevents shell metacharacters from being interpreted.",
+    "risk": "High. Arbitrary command execution."
+  },
+  "VULN-XSS-004": {
+    "description": "The /greet endpoint used render_template_string with unescaped user input leading to reflected XSS.",
+    "lines": [41,43,44,45,46],
+    "fix": "Use a template file (greet.html) and render_template, which escapes variables by default. Avoid rendering raw strings containing user input.",
+    "risk": "Medium. Client-side script execution and data theft."
+  },
+  "VULN-CRED-005": {
+    "description": "The code contained a hardcoded API_KEY and stored a plaintext password for the user 'alice'. This increases the chance that credentials will leak if the repo is shared.",
+    "lines": [10,49,50],
+    "fix": "Remove hardcoded keys from source. Use environment variables or a secrets manager and store passwords as salted hashes in a secure database.",
+    "risk": "High. Credential leakage and unauthorized access."
+  },
+  "VULN-DEBUG-006": {
+    "description": "The app ran with app.run(debug=True) which can expose the Werkzeug debugger and internal state.",
+    "lines": [62,63],
+    "fix": "Control debug mode via environment variable and default to False in production.",
+    "risk": "Medium. Information disclosure and code execution via debugger."
+  }
+}
