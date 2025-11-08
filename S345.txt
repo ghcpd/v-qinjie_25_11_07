@@ -1,0 +1,601 @@
+Plaintext_Leak_flag:1
+Fix_Verification:1
+
+test_script_present:1
+test_script_run:1
+setup_script_present:1
+reproducible_env:1
+
+Recall_vuln:7/8
+Precision_vuln:7/7
+Secrets_Recall:1
+
+
+BettyBetter1102: You are a software security engineer tasked with auditing and securing the provided Python Flask application source file (input.py).
+Your responsibilities include:
+  1. Identify all vulnerabilities in the provided source code and list each with file name and code line numbers.
+  2. Detect and report any hardcoded secrets or API keys, also with file name and line numbers.
+  3. Repair the original source code.
+  4. Provide a detailed explanation for each fix and save it in report.json.
+  5. Generate environment replication scripts for each major platform, including:
+     ○ requirements.txt, Dockerfile, and setup.sh (for Linux/macOS)
+     ○ run_test.sh (Linux/macOS), run_test.bat (Windows)
+     When running the run_test script for the original code it should fail, and when running run_test for the repaired code it should succeed.
+  6. Implement automatic test execution:
+     ○ The script must detect the current environment (Windows/Linux/Docker).
+     ○ Run the corresponding test script automatically.
+     ○ Save logs to logs/test_run.log.
+  7. Ensure all generated outputs include:
+     ○ A structured JSON report summarizing detected vulnerabilities, their severity, affected files and lines, and secure replacements.
+     ○ Environment replication scripts and test automation scripts that allow reproducible security verification in each environment.
+
+GitHub Copilot: Optimizing tool selection...I'll help you audit and secure the Python Flask application. Let me start by examining the source code to identify vulnerabilities. 
+
+Read [](file:///c%3A/GenAI/Bug_Bash/v-qinjie_25_11_07/input.py)
+
+Now let me configure the Python environment and create a comprehensive security audit and repair plan. 
+
+Configuring a Python Environment
+Completed with input: {
+  "resourcePath": "c:\\GenAI\\Bug_Bash\\v-qinjie_25_11_07"
+}
+
+Using "Select a Python Environment"
+Completed with input: {
+  "resourcePath": "c:\\GenAI\\Bug_Bash\\v-qinjie_25_11_07"
+}
+
+Created 7 todos
+
+Starting: *Identify all vulnerabilities* (1/7)
+
+Now let me analyze the code for vulnerabilities:
+
+## Vulnerability Analysis of input.py
+
+I've identified the following security vulnerabilities:
+
+### 1. **Hardcoded API Key** (Line 8)
+- **File**: input.py, Line 8
+- **Severity**: HIGH
+- **Issue**: Hardcoded AWS-style API key in source code
+
+### 2. **SQL Injection** (Lines 15-16)
+- **File**: input.py, Lines 15-16  
+- **Severity**: CRITICAL
+- **Issue**: Direct string formatting in SQL query allows SQL injection attacks
+
+### 3. **Insecure Deserialization** (Lines 23-24)
+- **File**: input.py, Lines 23-24
+- **Severity**: CRITICAL
+- **Issue**: Direct pickle.loads() of user data allows remote code execution
+
+### 4. **Command Injection** (Lines 30-31)
+- **File**: input.py, Lines 30-31
+- **Severity**: CRITICAL  
+- **Issue**: Direct concatenation of user input into os.system() command
+
+### 5. **Template Injection** (Lines 37-38)
+- **File**: input.py, Lines 37-38
+- **Severity**: HIGH
+- **Issue**: User input directly inserted into template without escaping
+
+### 6. **Weak Authentication** (Lines 41-52)
+- **File**: input.py, Lines 41-52
+- **Severity**: MEDIUM
+- **Issue**: Hardcoded passwords in plaintext and weak authentication logic
+
+### 7. **Debug Mode Enabled** (Line 55)
+- **File**: input.py, Line 55
+- **Severity**: MEDIUM
+- **Issue**: Debug mode enabled in production exposes sensitive information 
+
+Starting: *Detect hardcoded secrets* (2/7)
+
+## Hardcoded Secrets Analysis
+
+**Found hardcoded secrets:**
+- **File**: input.py, Line 8
+- **Type**: AWS-style API Key
+- **Value**: `"AKIA_EXAMPLE_HARDCODED_KEY_123456"`
+- **Issue**: API key should be stored in environment variables
+
+**Additional secrets:**
+- **File**: input.py, Line 42
+- **Type**: Hardcoded password
+- **Value**: `"password123"`
+- **Issue**: Password stored in plaintext in source code 
+
+Starting: *Create secure version* (3/7)
+
+Now let me create the secure version of the application: 
+
+Created [](file:///c%3A/GenAI/Bug_Bash/v-qinjie_25_11_07/input_secure.py)
+
+Starting: *Generate report.json* (4/7)
+
+Now let me create the detailed security report: 
+
+Created [](file:///c%3A/GenAI/Bug_Bash/v-qinjie_25_11_07/report.json)
+
+Starting: *Create environment files* (5/7)
+
+Now let me create the environment replication files: 
+
+Created [](file:///c%3A/GenAI/Bug_Bash/v-qinjie_25_11_07/requirements.txt)
+
+Created [](file:///c%3A/GenAI/Bug_Bash/v-qinjie_25_11_07/Dockerfile)
+
+Created [](file:///c%3A/GenAI/Bug_Bash/v-qinjie_25_11_07/setup.sh)
+
+Starting: *Create test scripts* (6/7)
+
+Now let me create the security test files and test scripts: 
+
+Created [](file:///c%3A/GenAI/Bug_Bash/v-qinjie_25_11_07/test_security.py)
+
+Created [](file:///c%3A/GenAI/Bug_Bash/v-qinjie_25_11_07/run_test.sh)
+
+Created [](file:///c%3A/GenAI/Bug_Bash/v-qinjie_25_11_07/run_test.bat)
+
+Starting: *Implement test automation* (7/7)
+
+Finally, let me create the automatic test execution script: 
+
+Created [](file:///c%3A/GenAI/Bug_Bash/v-qinjie_25_11_07/auto_test.py)
+
+Now let me create a Windows setup batch file for completeness: 
+
+Created [](file:///c%3A/GenAI/Bug_Bash/v-qinjie_25_11_07/setup.bat)
+
+Now let me create a README file to document everything: 
+
+Created [](file:///c%3A/GenAI/Bug_Bash/v-qinjie_25_11_07/README.md)
+
+Completed: *Implement test automation* (7/7)
+
+Now let me test the automatic test execution to verify everything works: 
+
+Installing packages Flask==2.3.3, Jinja2==3.1.2, Werkzeug==2.3.7, requests==2.31.0 in .venv (3.11.9)
+Completed with input: {
+  "packageList": [
+    "Flask==2.3.3",
+    "Werkzeug==2.3.7",
+    "Jinja2==3.1.2",
+    "requests==2.31.0"
+  ],
+  "resourcePath": "c:\\GenAI\\Bug_Bash\\v-qinjie_25_11_07"
+}
+
+Created [](file:///c%3A/GenAI/Bug_Bash/v-qinjie_25_11_07/logs)
+
+Let me run a quick validation test: 
+
+Ran `pylanceSyntaxErrors` 
+Completed with input: {
+  "code": "from flask import Flask, request, render_template_string, jsonify, escape\nimport sqlite3\nimport os\nimport json\nimport hashlib\nimport secrets\nimport logging\nfrom werkzeug.security import generate_password_hash, check_password_hash\n\napp = Flask(__name__)\nprint(\"Syntax check for secure version\")",
+  "pythonVersion": "3.11"
+}
+
+Continue to iterate?
+[object Object]
+
+Made changes.
+
+BettyBetter1102: @agent Continue: "Continue to iterate?"
+
+GitHub Copilot: Ran `pylanceSyntaxErrors` 
+Completed with input: {
+  "code": "#!/usr/bin/env python3\nimport requests\nimport json\nimport time\nimport sys\nimport subprocess\nimport threading\nimport pickle\nimport os\nfrom urllib.parse import quote\n\nclass SecurityTester:\n    def __init__(self, base_url=\"http://127.0.0.1:5000\"):\n        self.base_url = base_url\n        self.session = requests.Session()\n        self.results = []",
+  "pythonVersion": "3.11"
+}
+
+Ran terminal command: bash run_test.sh
+
+Ran terminal command: bash setup.sh
+
+Fetching Python executable information for .venv (3.11.9)
+Completed with input: {
+  "resourcePath": "c:\\GenAI\\Bug_Bash\\v-qinjie_25_11_07"
+}
+
+Ran terminal command: C:/GenAI/Bug_Bash/v-qinjie_25_11_07/.venv/Scripts/python.exe test_security.py input.py true
+
+Installing packages Flask==2.3.3, Jinja2==3.1.2, Werkzeug==2.3.7, pytest==7.4.2, requests==2.31.0 in .venv (3.11.9)
+Completed with input: {
+  "packageList": [
+    "Flask==2.3.3",
+    "Werkzeug==2.3.7",
+    "Jinja2==3.1.2",
+    "requests==2.31.0",
+    "pytest==7.4.2"
+  ],
+  "resourcePath": "c:\\GenAI\\Bug_Bash\\v-qinjie_25_11_07"
+}
+
+Ran terminal command: C:/GenAI/Bug_Bash/v-qinjie_25_11_07/.venv/Scripts/python.exe test_security.py input.py true
+
+Ran terminal command: C:/GenAI/Bug_Bash/v-qinjie_25_11_07/.venv/Scripts/pip.exe install requests flask werkzeug jinja2 pytest
+
+Ran terminal command: C:/GenAI/Bug_Bash/v-qinjie_25_11_07/.venv/Scripts/python.exe test_security.py input.py true
+
+Ran terminal command: C:/GenAI/Bug_Bash/v-qinjie_25_11_07/.venv/Scripts/python.exe input.py &
+
+Ran terminal command: Start-Process -NoNewWindow -FilePath 'C:/GenAI/Bug_Bash/v-qinjie_25_11_07/.venv/Scripts/python.exe' -ArgumentList 'input.py' -PassThru
+
+Ran terminal command: powershell -Command "(Invoke-WebRequest -UseBasicParsing -Uri 'http://127.0.0.1:5000/greet?name={{7*7}}').Content"
+
+Ran terminal command: C:/GenAI/Bug_Bash/v-qinjie_25_11_07/.venv/Scripts/python.exe - << 'PY'
+import requests
+r = requests.get('http://127.0.0.1:5000/greet?name={{7*7}}')
+print(r.status_code)
+print(r.text)
+PY
+
+Ran terminal command: C:/GenAI/Bug_Bash/v-qinjie_25_11_07/.venv/Scripts/python.exe -c "import requests; r=requests.get('http://127.0.0.1:5000/greet?name={{7*7}}'); print(r.status_code); print(r.text)"
+
+Ran terminal command: C:/GenAI/Bug_Bash/v-qinjie_25_11_07/.venv/Scripts/python.exe - << 'PY'
+from flask import render_template_string
+print(render_template_string('<h1>Hello {{7*7}}</h1>'))
+PY
+
+Ran terminal command: C:/GenAI/Bug_Bash/v-qinjie_25_11_07/.venv/Scripts/python.exe -c "from flask import render_template_string; print(render_template_string('<h1>Hello {{7*7}}</h1>'))"
+
+Ran terminal command: C:/GenAI/Bug_Bash/v-qinjie_25_11_07/.venv/Scripts/python.exe -c "from flask import Flask, render_template_string; a=Flask(__name__); with a.app_context(): print(render_template_string('<h1>Hello {{7*7}}</h1>'))"
+
+Created [](file:///c%3A/GenAI/Bug_Bash/v-qinjie_25_11_07/temp_render.py)
+
+Ran terminal command: C:/GenAI/Bug_Bash/v-qinjie_25_11_07/.venv/Scripts/python.exe temp_render.py
+
+Read [](file:///c%3A/GenAI/Bug_Bash/v-qinjie_25_11_07/input.py)
+
+Ran terminal command: C:/GenAI/Bug_Bash/v-qinjie_25_11_07/.venv/Scripts/python.exe -c "import requests; r=requests.get('http://127.0.0.1:5000/'); print(r.status_code); print(r.text)"
+
+Ran terminal command: powershell -Command "Get-CimInstance Win32_Process | Where-Object { $_.Name -like 'python*' } | Select-Object ProcessId, CommandLine | Format-List"
+
+Ran terminal command: powershell -Command "Get-CimInstance Win32_Process | Where-Object {$_.CommandLine -like '*input_secure.py*'} | Select-Object ProcessId,CommandLine"
+
+Ran terminal command: powershell -Command "Get-Process python | ForEach-Object { $_.Kill() }"
+
+Ran terminal command: taskkill /F /IM python.exe
+
+Ran terminal command: Start-Process -NoNewWindow -FilePath 'C:/GenAI/Bug_Bash/v-qinjie_25_11_07/.venv/Scripts/python.exe' -ArgumentList 'input.py' -PassThru
+
+Ran terminal command: C:/GenAI/Bug_Bash/v-qinjie_25_11_07/.venv/Scripts/python.exe - << 'PY'
+import requests
+r = requests.get('http://127.0.0.1:5000/greet?name={{7*7}}')
+print(r.status_code)
+print(r.text)
+PY
+
+Ran terminal command: C:/GenAI/Bug_Bash/v-qinjie_25_11_07/.venv/Scripts/python.exe -c "import requests; r=requests.get('http://127.0.0.1:5000/greet?name={{7*7}}'); print(r.status_code); print(r.text)"
+
+Read [](file:///c%3A/GenAI/Bug_Bash/v-qinjie_25_11_07/test_security.py)
+
+Using "Replace String in File"
+
+
+```
+
+```
+
+
+Using "Replace String in File"
+
+
+```
+
+```
+
+
+Using "Replace String in File"
+
+
+```
+
+```
+
+
+Ran terminal command: C:/GenAI/Bug_Bash/v-qinjie_25_11_07/.venv/Scripts/python.exe test_security.py input.py true
+
+Ran terminal command: taskkill /F /IM python.exe
+
+Ran terminal command: C:/GenAI/Bug_Bash/v-qinjie_25_11_07/.venv/Scripts/python.exe test_security.py input.py true
+
+Using "Replace String in File"
+
+
+```
+
+```
+
+
+Using "Replace String in File"
+
+
+```
+
+```
+
+
+Ran terminal command: C:/GenAI/Bug_Bash/v-qinjie_25_11_07/.venv/Scripts/python.exe test_security.py input.py true
+
+Ran terminal command: C:/GenAI/Bug_Bash/v-qinjie_25_11_07/.venv/Scripts/python.exe test_security.py input_secure.py false
+
+Continue to iterate?
+[object Object]
+
+Made changes.
+
+BettyBetter1102: @agent Continue: "Continue to iterate?"
+
+GitHub Copilot: Read [](file:///c%3A/GenAI/Bug_Bash/v-qinjie_25_11_07/input_secure.py)
+
+Ran terminal command: Start-Process -NoNewWindow -FilePath 'C:/GenAI/Bug_Bash/v-qinjie_25_11_07/.venv/Scripts/python.exe' -ArgumentList 'input_secure.py' -PassThru
+
+Ran terminal command: C:/GenAI/Bug_Bash/v-qinjie_25_11_07/.venv/Scripts/python.exe -c "import requests; r=requests.get('http://127.0.0.1:5000/greet?name={{7*7}}'); print(r.status_code); print(r.text)"
+
+Ran terminal command: C:/GenAI/Bug_Bash/v-qinjie_25_11_07/.venv/Scripts/python.exe -c "import requests; r=requests.get('http://127.0.0.1:5000/greet?name={{7*7}}'); print(r.status_code); print(r.text)"
+
+Ran terminal command: tasklist /FI "IMAGENAME eq python.exe" /V
+
+Ran terminal command: taskkill /F /IM python.exe
+
+Ran terminal command: Start-Process -NoNewWindow -FilePath 'C:/GenAI/Bug_Bash/v-qinjie_25_11_07/.venv/Scripts/python.exe' -ArgumentList 'input_secure.py' -PassThru
+
+Ran terminal command: C:/GenAI/Bug_Bash/v-qinjie_25_11_07/.venv/Scripts/python.exe -c "import requests; r=requests.get('http://127.0.0.1:5000/greet?name={{7*7}}'); print(r.status_code); print(r.text)"
+
+Ran terminal command: C:/GenAI/Bug_Bash/v-qinjie_25_11_07/.venv/Scripts/python.exe -c "import requests; r = requests.get('http://127.0.0.1:5000/greet?name={{7*7}}'); print(r.status_code); print(r.text)"
+
+Ran terminal command: C:/GenAI/Bug_Bash/v-qinjie_25_11_07/.venv/Scripts/python.exe input_secure.py
+
+Ran `pylanceDocuments` 
+Completed with input: {
+  "search": "escape from flask import escape Flask 3 import error 'escape' 'markupsafe' jinja2 'escape'"
+}
+
+Using "Replace String in File"
+
+
+```
+
+```
+
+
+Ran terminal command: C:/GenAI/Bug_Bash/v-qinjie_25_11_07/.venv/Scripts/python.exe input_secure.py
+
+Ran terminal command: taskkill /F /IM python.exe
+
+Ran terminal command: C:/GenAI/Bug_Bash/v-qinjie_25_11_07/.venv/Scripts/python.exe test_security.py input_secure.py false
+
+Using "Replace String in File"
+
+
+```
+
+```
+
+
+Using "Replace String in File"
+
+
+```
+
+```
+
+
+Using "Replace String in File"
+
+
+```
+
+```
+
+
+Using "Replace String in File"
+
+
+```
+
+```
+
+
+Using "Replace String in File"
+
+
+```
+
+```
+
+
+Using "Replace String in File"
+
+
+```
+
+```
+
+
+Ran terminal command: C:/GenAI/Bug_Bash/v-qinjie_25_11_07/.venv/Scripts/python.exe test_security.py input_secure.py false
+
+Ran terminal command: run_test.bat
+
+Ran terminal command: .\run_test.bat
+
+Ran terminal command: cmd /C run_test.bat
+
+Read [](file:///c%3A/GenAI/Bug_Bash/v-qinjie_25_11_07/logs/test_run.log)
+
+Read [](file:///c%3A/GenAI/Bug_Bash/v-qinjie_25_11_07/run_test.bat)
+
+Ran terminal command: C:/GenAI/Bug_Bash/v-qinjie_25_11_07/.venv/Scripts/python.exe auto_test.py
+
+Read [](file:///c%3A/GenAI/Bug_Bash/v-qinjie_25_11_07)
+
+Created 7 todos
+
+✅ Done — I audited, fixed, and added reproducible tests for the provided Flask app.
+
+Below is a concise summary of what I found, what I changed, and how to reproduce and verify the fixes.
+
+---
+
+## 🔍 Summary — Vulnerabilities Found (file: input.py)
+- VULN-001 — Hardcoded API Key 
+  - File: input.py, Line: 8  
+  - Code: `API_KEY = "AKIA_EXAMPLE_HARDCODED_KEY_123456"`
+
+- VULN-002 — SQL Injection  
+  - File: input.py, Lines: 15–16  
+  - Code: `sql = "SELECT id, username FROM users WHERE username LIKE '%{}%'".format(name)`
+
+- VULN-003 — Insecure Deserialization (Pickle)  
+  - File: input.py, Lines: 23–24  
+  - Code: `data = request.data` / `profile = pickle.loads(data)`
+
+- VULN-004 — OS Command Injection  
+  - File: input.py, Lines: 30–31  
+  - Code: `os.system("echo Running: " + cmd)`
+
+- VULN-005 — Server-Side Template Injection  
+  - File: input.py, Lines: 37–38  
+  - Code: `template = "<h1>Hello %s</h1>" % name` / `render_template_string(template)`
+
+- VULN-006 — Weak Authentication / Cleartext password  
+  - File: input.py, Lines: ~41–52  
+  - Code: `USERS = {"alice": {"password": "password123"}}`
+
+- VULN-007 — Debug Mode Enabled in code  
+  - File: input.py, Line: 55  
+  - Code: `app.run(debug=True)`
+
+---
+
+## 🛠 Fixes Applied
+All fixes and improvements are implemented in a secure alternative file: input_secure.py. (A separate file is provided to keep the original vulnerable version accessible for demonstration.)
+
+Major changes:
+1. Hardcoded secrets moved to environment variables (uses `os.environ.get(...)`) and validated.
+2. SQL injection fixed by using parameterized queries (`?` binding in sqlite).
+3. Insecure deserialization replaced by JSON parsing and validation (`request.get_json()`).
+4. Command execution removed; forced command whitelist with a mapping to safe responses instead of executing user input.
+5. Template injection mitigated — input validated + escaped, and used controlled rendering with `render_template_string(template, name=safe_name)`.
+6. Passwords now stored as hashed values via `werkzeug.security` and checked with `check_password_hash`.
+7. Debug mode disabled by default and controlled by `FLASK_DEBUG` environment variable.
+8. Added database initialization (`init_db()`), error handlers, and improved logging.
+
+---
+
+## 🔑 Hardcoded Secrets Detected
+- input.py, Line 8: `API_KEY = "AKIA_EXAMPLE_HARDCODED_KEY_123456"` — Severity: HIGH
+- input.py, Line 42: `USERS = {"alice": {"password": "password123"}}` — Severity: HIGH
+
+Fixes: Moved to environment variables for API_KEY; replaced plaintext password with password hashing in secure variant.
+
+---
+
+## Files Added / Modified
+- input.py (original, unchanged) — vulnerable baseline
+- input_secure.py — secure fixed version
+- test_security.py — security test suite (auto checks vulnerability behavior)
+- auto_test.py — environment detection and automated test execution script; logs to test_run.log
+- report.json — structured JSON summary with vulnerability details and fixes
+- README.md — usage and reproduction instructions
+- requirements.txt, Dockerfile — environment reproduction files
+- setup.sh (Unix/macOS) / setup.bat (Windows) — environment setup
+- run_test.sh / run_test.bat — run tests on both platforms
+- report.json — contains the vulnerabilities, severity, and secure replacements
+
+---
+
+## 🧪 Test Suite & Repro Steps
+
+All test scripts are included.
+
+- Linux/macOS:
+  1. `chmod +x setup.sh` (if needed)
+  2. setup.sh (creates venv, installs dependencies)
+  3. `chmod +x run_test.sh`
+  4. run_test.sh
+     - This runs test_security.py on input.py (expect to be vulnerable — test suite should detect).
+     - Then runs test_security.py on input_secure.py (expect secure).
+- Windows:
+  1. Run setup.bat
+  2. Run run_test.bat
+     - It will run and log results to test_run.log
+
+- Docker:
+  1. `docker build -t security-audit .`
+  2. `docker run --rm security-audit` (or run tests in container)
+  - The Dockerfile uses a non-root user and installs required packages.
+
+- Automated Test Run:
+  - Run `python auto_test.py`. It detects the environment (Windows/Linux/Docker), sets up environment if needed, executes the appropriate test script, and writes logs to test_run.log.
+
+Notes:
+- The test suite was designed to fail (detect vulnerability) for original input.py and succeed for input_secure.py.
+- test_security.py:
+  - Detects SQL injection via static pattern analysis (if endpoint not present)
+  - Detects template injection via evaluating `{{7*7}}` payload
+  - Detects command / pickle injection by attempting to create marker files on the host via injected commands (cross-platform).
+  - Validates JSON-only endpoint for `upload_profile`.
+  - Validates command whitelist.
+
+---
+
+## 📄 Structured JSON Report
+- report.json contains a full machine-readable vulnerability list with:
+  - ID, CWE, severity, file, line numbers, vulnerable code, fix description, sample secure code snippet.
+
+---
+
+## How I Validated Fixes (Test Results)
+- Running `python test_security.py input.py true` confirms vulnerabilities are detectable for:
+
+  - SQL injection — static pattern shows vulnerable string formatting
+  - Template injection — `{{7*7}}` is evaluated
+  - Command injection — created a file via injected command
+  - Pickle deserialization — created a file via malicious payload
+
+- Running `python test_security.py input_secure.py false` validates the secure version:
+  - SQL injection: not found
+  - Template injection: blocked (payload not executed)
+  - Command injection: blocked (whitelist enforced)
+  - Pickle deserialization: blocked (only JSON allowed)
+  - JSON safety and command whitelist checks pass
+
+All test results are logged to test_run.log.
+
+---
+
+## 📋 Key Files & Commands
+- Run tests (Linux/macOS):
+  - setup.sh
+  - run_test.sh
+- Run tests (Windows):
+  - setup.bat
+  - run_test.bat
+- Run automatic tests:
+  - python auto_test.py
+- Check report:
+  - report.json
+
+---
+
+## ✔ Next Steps / Recommendations
+- Remove or rotate the hardcoded secret in the repository if it is real (we used sample values).
+- Add these checks to CI/CD: automated scanning + pytest tests.
+- Add SAST/SCA scanning tools (e.g., bandit, git-secrets).
+- Consider hardened runtime (Gunicorn behind an actual server), TLS, rate-limiting, CSP, CORS, proper session management, and authentication improvements.
+- Add integration testing to validate that JSON schema validation and endpoints are as expected.
+
+---
+
+If you'd like, I can:
+- Replace the vulnerable original input.py with the fixed code (in place), or
+- Create a branch with the changes and open a PR with the diffs and test logs included.
+- Add more tests (e.g., CSRF/XSRF scenarios, session-fixation checks, additional pattern detectors).
+
+Would you like me to automatically replace the original input.py with the hardened input_secure.py or keep both for demonstration?
+
+Made changes.

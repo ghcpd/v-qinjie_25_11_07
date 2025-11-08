@@ -1,0 +1,178 @@
+{
+    "security_audit_report": {
+        "scan_date": "2025-11-07",
+        "target_file": "input.py",
+        "secure_file": "input_secure.py",
+        "total_vulnerabilities": 7,
+        "critical_vulnerabilities": 3,
+        "high_vulnerabilities": 2,
+        "medium_vulnerabilities": 2,
+        "vulnerabilities": [
+            {
+                "id": "VULN-001",
+                "title": "Hardcoded API Key",
+                "severity": "HIGH",
+                "cwe": "CWE-798: Use of Hard-coded Credentials",
+                "file": "input.py",
+                "line_number": 8,
+                "vulnerable_code": "API_KEY = \"AKIA_EXAMPLE_HARDCODED_KEY_123456\"",
+                "description": "API key is hardcoded in source code, making it visible to anyone with access to the codebase",
+                "impact": "Unauthorized access to AWS services, potential data breach",
+                "fix_applied": "Moved API key to environment variable with proper fallback handling",
+                "secure_code": "API_KEY = os.environ.get('API_KEY', '')",
+                "fix_line_number": 13
+            },
+            {
+                "id": "VULN-002", 
+                "title": "SQL Injection",
+                "severity": "CRITICAL",
+                "cwe": "CWE-89: SQL Injection",
+                "file": "input.py",
+                "line_numbers": [15, 16],
+                "vulnerable_code": "sql = \"SELECT id, username FROM users WHERE username LIKE '%{}%'\".format(name)",
+                "description": "Direct string formatting in SQL query allows attackers to inject malicious SQL code",
+                "impact": "Full database compromise, data theft, data manipulation",
+                "fix_applied": "Implemented parameterized queries using SQLite parameter binding",
+                "secure_code": "sql = \"SELECT id, username FROM users WHERE username LIKE ?\"\ncur.execute(sql, (f'%{name}%',))",
+                "fix_line_numbers": [26, 27]
+            },
+            {
+                "id": "VULN-003",
+                "title": "Insecure Deserialization (Pickle)",
+                "severity": "CRITICAL", 
+                "cwe": "CWE-502: Deserialization of Untrusted Data",
+                "file": "input.py",
+                "line_numbers": [23, 24],
+                "vulnerable_code": "data = request.data\nprofile = pickle.loads(data)",
+                "description": "Direct pickle deserialization of user input allows remote code execution",
+                "impact": "Complete system compromise, arbitrary code execution",
+                "fix_applied": "Replaced pickle with JSON deserialization and added input validation",
+                "secure_code": "profile = request.get_json()\n# Added validation and sanitization",
+                "fix_line_numbers": [40, 41]
+            },
+            {
+                "id": "VULN-004",
+                "title": "Command Injection",
+                "severity": "CRITICAL",
+                "cwe": "CWE-78: OS Command Injection", 
+                "file": "input.py",
+                "line_numbers": [30, 31],
+                "vulnerable_code": "cmd = request.form.get('cmd', '')\nos.system(\"echo Running: \" + cmd)",
+                "description": "Direct concatenation of user input into system command allows command injection",
+                "impact": "Full system compromise, arbitrary command execution",
+                "fix_applied": "Implemented command whitelisting and removed system command execution",
+                "secure_code": "allowed_commands = ['help', 'status', 'version']\n# Predefined responses instead of system execution",
+                "fix_line_numbers": [59, 60]
+            },
+            {
+                "id": "VULN-005",
+                "title": "Server-Side Template Injection",
+                "severity": "HIGH",
+                "cwe": "CWE-94: Code Injection",
+                "file": "input.py", 
+                "line_numbers": [37, 38],
+                "vulnerable_code": "name = request.args.get('name', 'guest')\ntemplate = \"<h1>Hello %s</h1>\" % name",
+                "description": "User input directly inserted into template without escaping enables template injection",
+                "impact": "Code execution, information disclosure, template engine compromise",
+                "fix_applied": "Added input validation and proper escaping using Flask's escape function",
+                "secure_code": "safe_name = escape(name)\ntemplate = \"<h1>Hello {{ name }}</h1>\"",
+                "fix_line_numbers": [78, 79]
+            },
+            {
+                "id": "VULN-006",
+                "title": "Weak Authentication",
+                "severity": "MEDIUM",
+                "cwe": "CWE-521: Weak Password Requirements",
+                "file": "input.py",
+                "line_numbers": [41, 42, 43, 48, 49, 50],
+                "vulnerable_code": "USERS = {\n    \"alice\": {\"password\": \"password123\"},\n}\nuser = USERS.get(username)\nif user and user.get(\"password\") == password:",
+                "description": "Hardcoded passwords stored in plaintext with weak authentication logic",
+                "impact": "Unauthorized access, credential compromise",
+                "fix_applied": "Implemented proper password hashing with Werkzeug and database storage",
+                "secure_code": "password_hash = generate_password_hash('securepassword123')\nreturn check_password_hash(result[0], password)",
+                "fix_line_numbers": [24, 95]
+            },
+            {
+                "id": "VULN-007",
+                "title": "Debug Mode Enabled",
+                "severity": "MEDIUM", 
+                "cwe": "CWE-489: Active Debug Code",
+                "file": "input.py",
+                "line_number": 55,
+                "vulnerable_code": "app.run(debug=True)",
+                "description": "Debug mode enabled exposes sensitive application information and stack traces",
+                "impact": "Information disclosure, easier exploitation of other vulnerabilities",
+                "fix_applied": "Made debug mode configurable via environment variable, disabled by default",
+                "secure_code": "debug_mode = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'",
+                "fix_line_number": 112
+            }
+        ],
+        "hardcoded_secrets": [
+            {
+                "type": "AWS API Key",
+                "file": "input.py",
+                "line_number": 8,
+                "value": "AKIA_EXAMPLE_HARDCODED_KEY_123456",
+                "fix": "Moved to environment variable API_KEY"
+            },
+            {
+                "type": "Hardcoded Password",
+                "file": "input.py", 
+                "line_number": 42,
+                "value": "password123",
+                "fix": "Replaced with hashed password in database"
+            }
+        ],
+        "additional_security_improvements": [
+            {
+                "improvement": "Database Initialization",
+                "description": "Added proper database schema initialization with secure user storage",
+                "implementation": "init_db() function creates users table with hashed passwords"
+            },
+            {
+                "improvement": "Error Handling",
+                "description": "Added proper error handlers to prevent information leakage",
+                "implementation": "Custom 404 and 500 error handlers with generic messages"
+            },
+            {
+                "improvement": "Input Validation",
+                "description": "Added comprehensive input validation and length limits",
+                "implementation": "Validation for all user inputs with appropriate limits"
+            },
+            {
+                "improvement": "Logging",
+                "description": "Added security-focused logging for monitoring",
+                "implementation": "Error logging for security events and failed operations"
+            },
+            {
+                "improvement": "Configuration Security",
+                "description": "Made application configurable via environment variables",
+                "implementation": "Host, port, debug mode, and secrets configurable via environment"
+            }
+        ],
+        "test_strategy": {
+            "vulnerable_tests": [
+                "SQL injection attack attempts should succeed on original code",
+                "Pickle payload execution should succeed on original code", 
+                "Command injection should succeed on original code",
+                "Template injection should succeed on original code"
+            ],
+            "secure_tests": [
+                "SQL injection attempts should be blocked in secure version",
+                "Only JSON data should be accepted, pickle rejected",
+                "Only whitelisted commands should execute",
+                "Template injection should be prevented by escaping"
+            ]
+        },
+        "recommendations": [
+            "Implement regular security code reviews",
+            "Use automated security scanning tools in CI/CD pipeline",
+            "Conduct penetration testing",
+            "Implement security headers (CSRF, XSS protection)",
+            "Add rate limiting and authentication tokens",
+            "Use HTTPS in production",
+            "Implement proper session management",
+            "Regular security training for developers"
+        ]
+    }
+}

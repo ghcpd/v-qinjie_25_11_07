@@ -1,0 +1,17 @@
+2025/11/07 周五 14:43:46.88 - Starting security test suite 
+2025/11/07 周五 14:43:47.06 - Starting test for input.py (expect vulnerable: true) 
+Testing input.py
+
+=== Running Security Tests (Expecting Vulnerable) ===
+[PASS] SQL Injection: Vulnerable
+    Details: Static analysis: vulnerable string formatting found
+[PASS] Template Injection: Vulnerable
+    Details: Payload executed: True
+[PASS] Command Injection: Vulnerable
+    Details: Command created file: True
+[PASS] Pickle Deserialization: Vulnerable
+    Details: Pickle created file: True
+
+=== Test Summary ===
+Passed: 4/4
+Expected behavior: Vulnerable
