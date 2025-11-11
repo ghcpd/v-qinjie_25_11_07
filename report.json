@@ -1,0 +1,133 @@
+{
+  "audit_summary": {
+    "file_audited": "input.py",
+    "total_vulnerabilities": 7,
+    "critical": 4,
+    "high": 2,
+    "medium": 1,
+    "severity_breakdown": {
+      "critical": ["SQL Injection", "Remote Code Execution", "Command Injection", "Template Injection"],
+      "high": ["Hardcoded Secrets", "Weak Authentication"],
+      "medium": ["Debug Mode Enabled"]
+    }
+  },
+  "vulnerabilities": [
+    {
+      "id": "VULN-001",
+      "type": "Hardcoded Secret",
+      "severity": "HIGH",
+      "file": "input.py",
+      "line": 9,
+      "description": "API key is hardcoded directly in the source code. This exposes sensitive credentials that could be leaked through version control or code inspection.",
+      "vulnerable_code": "API_KEY = \"AKIA_EXAMPLE_HARDCODED_KEY_123456\"",
+      "impact": "If this code is committed to version control, the API key becomes publicly accessible. Attackers can use this key to impersonate the application and access protected resources.",
+      "fix": "Load API key from environment variable using os.environ.get()",
+      "fixed_code": "API_KEY = os.environ.get('API_KEY', '')",
+      "fix_explanation": "Environment variables keep secrets out of source code. The application should read the API key from the environment at runtime, allowing different keys for different environments without code changes.",
+      "cwe": "CWE-798"
+    },
+    {
+      "id": "VULN-002",
+      "type": "SQL Injection",
+      "severity": "CRITICAL",
+      "file": "input.py",
+      "line": 16,
+      "description": "User input is directly concatenated into SQL query using string formatting, allowing SQL injection attacks.",
+      "vulnerable_code": "sql = \"SELECT id, username FROM users WHERE username LIKE '%{}%'\".format(name)",
+      "impact": "Attackers can manipulate the SQL query to extract sensitive data, modify database contents, or execute arbitrary SQL commands. Example attack: name=' OR '1'='1' --",
+      "fix": "Use parameterized queries with placeholders",
+      "fixed_code": "sql = \"SELECT id, username FROM users WHERE username LIKE ?\"\ncur.execute(sql, ('%' + name + '%',))",
+      "fix_explanation": "Parameterized queries separate SQL structure from data. The database driver properly escapes and quotes the parameters, preventing injection. The placeholder '?' is replaced safely by the database engine.",
+      "cwe": "CWE-89"
+    },
+    {
+      "id": "VULN-003",
+      "type": "Remote Code Execution",
+      "severity": "CRITICAL",
+      "file": "input.py",
+      "line": 27,
+      "description": "Unpickling user-controlled data allows arbitrary code execution. Pickle can deserialize malicious objects that execute code during deserialization.",
+      "vulnerable_code": "profile = pickle.loads(data)",
+      "impact": "Attackers can craft malicious pickle payloads that execute arbitrary Python code on the server, leading to complete system compromise.",
+      "fix": "Replace pickle with JSON for data serialization",
+      "fixed_code": "profile = json.loads(request.data.decode('utf-8'))",
+      "fix_explanation": "JSON is a safe serialization format that only handles data structures, not executable code. It cannot be used to execute arbitrary code. We also add proper error handling for invalid JSON.",
+      "cwe": "CWE-502"
+    },
+    {
+      "id": "VULN-004",
+      "type": "Command Injection",
+      "severity": "CRITICAL",
+      "file": "input.py",
+      "line": 36,
+      "description": "User input is directly concatenated into shell command using os.system(), allowing command injection.",
+      "vulnerable_code": "os.system(\"echo Running: \" + cmd)",
+      "impact": "Attackers can inject shell commands by appending command separators (e.g., '; rm -rf /' or '| cat /etc/passwd'). This can lead to arbitrary command execution on the server.",
+      "fix": "Use subprocess.run() with proper argument handling and command whitelisting",
+      "fixed_code": "subprocess.run(['echo', 'Running:', cmd], capture_output=True, text=True, timeout=5)",
+      "fix_explanation": "subprocess.run() with a list of arguments prevents shell interpretation. Each argument is treated as a separate parameter, preventing injection. In production, implement a command whitelist to restrict allowed commands.",
+      "cwe": "CWE-78"
+    },
+    {
+      "id": "VULN-005",
+      "type": "Template Injection",
+      "severity": "CRITICAL",
+      "file": "input.py",
+      "line": 44,
+      "description": "User input is inserted into template string without escaping, allowing template injection attacks.",
+      "vulnerable_code": "template = \"<h1>Hello %s</h1>\" % name",
+      "impact": "Attackers can inject template code (e.g., '{{ config }}' or '{{ self.__init__.__globals__.__builtins__.__import__(\"os\").system(\"rm -rf /\") }}') to execute arbitrary code or access sensitive data.",
+      "fix": "Escape user input and use proper template rendering",
+      "fixed_code": "safe_name = escape(name)\ntemplate = \"<h1>Hello {{ name }}</h1>\"\nreturn render_template_string(template, name=safe_name)",
+      "fix_explanation": "The escape() function HTML-escapes special characters, preventing XSS. Using render_template_string with proper variable passing ensures safe template rendering. Flask's template engine automatically escapes variables.",
+      "cwe": "CWE-94"
+    },
+    {
+      "id": "VULN-006",
+      "type": "Weak Authentication",
+      "severity": "HIGH",
+      "file": "input.py",
+      "line": 57,
+      "description": "Passwords are stored and compared in plain text, violating security best practices.",
+      "vulnerable_code": "if user and user.get(\"password\") == password:",
+      "impact": "If the database is compromised, all passwords are immediately exposed. Also enables timing attacks and makes password recovery impossible without storing plain text.",
+      "fix": "Use password hashing with werkzeug.security",
+      "fixed_code": "if user and check_password_hash(user.get(\"password_hash\"), password):",
+      "fix_explanation": "Password hashing (using bcrypt via werkzeug) stores one-way hashes instead of plain text. check_password_hash() securely compares passwords against hashes. Even if the database is compromised, passwords cannot be easily recovered.",
+      "cwe": "CWE-256"
+    },
+    {
+      "id": "VULN-007",
+      "type": "Debug Mode Enabled",
+      "severity": "MEDIUM",
+      "file": "input.py",
+      "line": 62,
+      "description": "Debug mode is enabled in production, exposing sensitive error information and enabling interactive debugger.",
+      "vulnerable_code": "app.run(debug=True)",
+      "impact": "Debug mode exposes detailed stack traces, source code, and enables the Werkzeug debugger which can execute arbitrary code if accessed by attackers.",
+      "fix": "Disable debug mode in production",
+      "fixed_code": "app.run(debug=False, host='0.0.0.0', port=5000)",
+      "fix_explanation": "Disabling debug mode prevents exposure of sensitive information. Explicitly set host and port for better control. Use environment variables to control debug mode per environment.",
+      "cwe": "CWE-489"
+    }
+  ],
+  "security_recommendations": [
+    "Implement rate limiting to prevent brute force attacks",
+    "Add input validation and sanitization middleware",
+    "Use HTTPS in production to encrypt data in transit",
+    "Implement proper session management with secure cookies",
+    "Add logging and monitoring for security events",
+    "Regular security audits and dependency updates",
+    "Implement Content Security Policy (CSP) headers",
+    "Use environment-specific configuration files",
+    "Add API authentication/authorization middleware",
+    "Implement database connection pooling and proper error handling"
+  ],
+  "repaired_file": "input_secured.py",
+  "test_files": {
+    "linux_macos": "run_test.sh",
+    "windows": "run_test.bat",
+    "docker": "Dockerfile"
+  }
+}
+
