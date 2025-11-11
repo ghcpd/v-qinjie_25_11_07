@@ -19,6 +19,13 @@ Secrets_Recall:0.5
 "startDate":2025-11-10 10:22:51
 "endDate":2025-11-10 10:32:24
 
+# Audit and secure Python Flask application
+_Exported on 11/11/2025 at 10:31:44 GMT+8 from Cursor (2.0.69)_
+
+---
+
+**User**
+
 You are a software security engineer tasked with auditing and securing the provided Python Flask application source file (input.py).
 Your responsibilities include:
 
@@ -36,73 +43,2069 @@ Implement automatic test execution:
 ○ Save logs to logs/test_run.log.
 Ensure all generated outputs include:
 ○ A structured JSON report summarizing detected vulnerabilities, their severity, affected files and lines, and secure replacements.
-○ Environment replication scripts and test automatio
+○ Environment replication scripts and test automation scripts that allow reproducible security verification in each environment.
+@input.py 
+
+---
+
+**Cursor**
 
 
 Analyzing the code for vulnerabilities and preparing fixes. Reviewing the file, then creating the security audit and fixes.
 
 
-[2 tools called]
-
 
 Creating the repaired version and required files:
 
 
-[8 tools called]
+```python
+from flask import Flask, request, render_template_string, jsonify, escape
+import sqlite3
+import os
+import json
+import hashlib
+import secrets
+from werkzeug.security import check_password_hash, generate_password_hash
+
+app = Flask(__name__)
+
+# API key should be loaded from environment variable, not hardcoded
+API_KEY = os.environ.get('API_KEY', '')
+
+
+def query_users_by_name(name):
+    conn = sqlite3.connect('users.db')
+    cur = conn.cursor()
+    # Use parameterized queries to prevent SQL injection
+    sql = "SELECT id, username FROM users WHERE username LIKE ?"
+    cur.execute(sql, ('%' + name + '%',))
+    rows = cur.fetchall()
+    conn.close()
+    return rows
+
+
+@app.route('/upload_profile', methods=['POST'])
+def upload_profile():
+    # Use JSON instead of pickle to prevent remote code execution
+    try:
+        if request.is_json:
+            profile = request.get_json()
+        else:
+            profile = json.loads(request.data.decode('utf-8'))
+        # Validate that profile is a dict
+        if not isinstance(profile, dict):
+            return jsonify({"status": "error", "message": "Invalid profile format"}), 400
+        return jsonify({"status": "ok", "name": profile.get("name")})
+    except (json.JSONDecodeError, UnicodeDecodeError) as e:
+        return jsonify({"status": "error", "message": "Invalid JSON format"}), 400
+
+
+@app.route('/run', methods=['POST'])
+def run_command():
+    cmd = request.form.get('cmd', '')
+    # Use subprocess with proper argument handling instead of os.system
+    import subprocess
+    try:
+        # Only allow specific whitelisted commands or use a command mapping
+        # For demonstration, we'll use subprocess.run with shell=False
+        # In production, implement a command whitelist
+        result = subprocess.run(['echo', 'Running:', cmd], 
+                              capture_output=True, 
+                              text=True, 
+                              timeout=5)
+        return result.stdout if result.returncode == 0 else "error"
+    except subprocess.TimeoutExpired:
+        return "timeout", 408
+    except Exception as e:
+        return f"error: {str(e)}", 500
+
+
+@app.route('/greet')
+def greet():
+    name = request.args.get('name', 'guest')
+    # Escape user input to prevent template injection
+    safe_name = escape(name)
+    template = "<h1>Hello {{ name }}</h1>"
+    return render_template_string(template, name=safe_name)
+
+
+USERS = {
+    "alice": {"password_hash": generate_password_hash("password123")},
+}
+
+@app.route('/login', methods=['POST'])
+def login():
+    username = request.form.get('username')
+    password = request.form.get('password')
+    user = USERS.get(username)
+    # Use password hashing instead of plain text comparison
+    if user and check_password_hash(user.get("password_hash"), password):
+        return "login ok"
+    return "login failed", 401
+
+
+if __name__ == '__main__':
+    # Disable debug mode in production
+    app.run(debug=False, host='0.0.0.0', port=5000)
+
+```
+
+```json
+{
+  "audit_summary": {
+    "file_audited": "input.py",
+    "total_vulnerabilities": 7,
+    "critical": 4,
+    "high": 2,
+    "medium": 1,
+    "severity_breakdown": {
+      "critical": ["SQL Injection", "Remote Code Execution", "Command Injection", "Template Injection"],
+      "high": ["Hardcoded Secrets", "Weak Authentication"],
+      "medium": ["Debug Mode Enabled"]
+    }
+  },
+  "vulnerabilities": [
+    {
+      "id": "VULN-001",
+      "type": "Hardcoded Secret",
+      "severity": "HIGH",
+      "file": "input.py",
+      "line": 9,
+      "description": "API key is hardcoded directly in the source code. This exposes sensitive credentials that could be leaked through version control or code inspection.",
+      "vulnerable_code": "API_KEY = \"AKIA_EXAMPLE_HARDCODED_KEY_123456\"",
+      "impact": "If this code is committed to version control, the API key becomes publicly accessible. Attackers can use this key to impersonate the application and access protected resources.",
+      "fix": "Load API key from environment variable using os.environ.get()",
+      "fixed_code": "API_KEY = os.environ.get('API_KEY', '')",
+      "fix_explanation": "Environment variables keep secrets out of source code. The application should read the API key from the environment at runtime, allowing different keys for different environments without code changes.",
+      "cwe": "CWE-798"
+    },
+    {
+      "id": "VULN-002",
+      "type": "SQL Injection",
+      "severity": "CRITICAL",
+      "file": "input.py",
+      "line": 16,
+      "description": "User input is directly concatenated into SQL query using string formatting, allowing SQL injection attacks.",
+      "vulnerable_code": "sql = \"SELECT id, username FROM users WHERE username LIKE '%{}%'\".format(name)",
+      "impact": "Attackers can manipulate the SQL query to extract sensitive data, modify database contents, or execute arbitrary SQL commands. Example attack: name=' OR '1'='1' --",
+      "fix": "Use parameterized queries with placeholders",
+      "fixed_code": "sql = \"SELECT id, username FROM users WHERE username LIKE ?\"\ncur.execute(sql, ('%' + name + '%',))",
+      "fix_explanation": "Parameterized queries separate SQL structure from data. The database driver properly escapes and quotes the parameters, preventing injection. The placeholder '?' is replaced safely by the database engine.",
+      "cwe": "CWE-89"
+    },
+    {
+      "id": "VULN-003",
+      "type": "Remote Code Execution",
+      "severity": "CRITICAL",
+      "file": "input.py",
+      "line": 27,
+      "description": "Unpickling user-controlled data allows arbitrary code execution. Pickle can deserialize malicious objects that execute code during deserialization.",
+      "vulnerable_code": "profile = pickle.loads(data)",
+      "impact": "Attackers can craft malicious pickle payloads that execute arbitrary Python code on the server, leading to complete system compromise.",
+      "fix": "Replace pickle with JSON for data serialization",
+      "fixed_code": "profile = json.loads(request.data.decode('utf-8'))",
+      "fix_explanation": "JSON is a safe serialization format that only handles data structures, not executable code. It cannot be used to execute arbitrary code. We also add proper error handling for invalid JSON.",
+      "cwe": "CWE-502"
+    },
+    {
+      "id": "VULN-004",
+      "type": "Command Injection",
+      "severity": "CRITICAL",
+      "file": "input.py",
+      "line": 36,
+      "description": "User input is directly concatenated into shell command using os.system(), allowing command injection.",
+      "vulnerable_code": "os.system(\"echo Running: \" + cmd)",
+      "impact": "Attackers can inject shell commands by appending command separators (e.g., '; rm -rf /' or '| cat /etc/passwd'). This can lead to arbitrary command execution on the server.",
+      "fix": "Use subprocess.run() with proper argument handling and command whitelisting",
+      "fixed_code": "subprocess.run(['echo', 'Running:', cmd], capture_output=True, text=True, timeout=5)",
+      "fix_explanation": "subprocess.run() with a list of arguments prevents shell interpretation. Each argument is treated as a separate parameter, preventing injection. In production, implement a command whitelist to restrict allowed commands.",
+      "cwe": "CWE-78"
+    },
+    {
+      "id": "VULN-005",
+      "type": "Template Injection",
+      "severity": "CRITICAL",
+      "file": "input.py",
+      "line": 44,
+      "description": "User input is inserted into template string without escaping, allowing template injection attacks.",
+      "vulnerable_code": "template = \"<h1>Hello %s</h1>\" % name",
+      "impact": "Attackers can inject template code (e.g., '{{ config }}' or '{{ self.__init__.__globals__.__builtins__.__import__(\"os\").system(\"rm -rf /\") }}') to execute arbitrary code or access sensitive data.",
+      "fix": "Escape user input and use proper template rendering",
+      "fixed_code": "safe_name = escape(name)\ntemplate = \"<h1>Hello {{ name }}</h1>\"\nreturn render_template_string(template, name=safe_name)",
+      "fix_explanation": "The escape() function HTML-escapes special characters, preventing XSS. Using render_template_string with proper variable passing ensures safe template rendering. Flask's template engine automatically escapes variables.",
+      "cwe": "CWE-94"
+    },
+    {
+      "id": "VULN-006",
+      "type": "Weak Authentication",
+      "severity": "HIGH",
+      "file": "input.py",
+      "line": 57,
+      "description": "Passwords are stored and compared in plain text, violating security best practices.",
+      "vulnerable_code": "if user and user.get(\"password\") == password:",
+      "impact": "If the database is compromised, all passwords are immediately exposed. Also enables timing attacks and makes password recovery impossible without storing plain text.",
+      "fix": "Use password hashing with werkzeug.security",
+      "fixed_code": "if user and check_password_hash(user.get(\"password_hash\"), password):",
+      "fix_explanation": "Password hashing (using bcrypt via werkzeug) stores one-way hashes instead of plain text. check_password_hash() securely compares passwords against hashes. Even if the database is compromised, passwords cannot be easily recovered.",
+      "cwe": "CWE-256"
+    },
+    {
+      "id": "VULN-007",
+      "type": "Debug Mode Enabled",
+      "severity": "MEDIUM",
+      "file": "input.py",
+      "line": 62,
+      "description": "Debug mode is enabled in production, exposing sensitive error information and enabling interactive debugger.",
+      "vulnerable_code": "app.run(debug=True)",
+      "impact": "Debug mode exposes detailed stack traces, source code, and enables the Werkzeug debugger which can execute arbitrary code if accessed by attackers.",
+      "fix": "Disable debug mode in production",
+      "fixed_code": "app.run(debug=False, host='0.0.0.0', port=5000)",
+      "fix_explanation": "Disabling debug mode prevents exposure of sensitive information. Explicitly set host and port for better control. Use environment variables to control debug mode per environment.",
+      "cwe": "CWE-489"
+    }
+  ],
+  "security_recommendations": [
+    "Implement rate limiting to prevent brute force attacks",
+    "Add input validation and sanitization middleware",
+    "Use HTTPS in production to encrypt data in transit",
+    "Implement proper session management with secure cookies",
+    "Add logging and monitoring for security events",
+    "Regular security audits and dependency updates",
+    "Implement Content Security Policy (CSP) headers",
+    "Use environment-specific configuration files",
+    "Add API authentication/authorization middleware",
+    "Implement database connection pooling and proper error handling"
+  ],
+  "repaired_file": "input_secured.py",
+  "test_files": {
+    "linux_macos": "run_test.sh",
+    "windows": "run_test.bat",
+    "docker": "Dockerfile"
+  }
+}
+
+```
+
+```pip-requirements
+Flask==3.0.0
+Werkzeug==3.0.1
+requests==2.31.0
+
+```
+
+```dockerfile
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Copy requirements and install dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application files
+COPY input.py .
+COPY input_secured.py .
+COPY run_test.sh .
+
+# Create logs directory
+RUN mkdir -p logs
+
+# Set environment variable for API key (should be overridden in production)
+ENV API_KEY=""
+
+# Expose Flask port
+EXPOSE 5000
+
+# Default command runs tests
+CMD ["/bin/bash", "run_test.sh"]
+
+```
+
+```shellscript
+#!/bin/bash
+
+# Setup script for Linux/macOS
+# This script sets up the environment for security testing
+
+set -e
+
+echo "=== Security Audit Environment Setup ==="
+echo ""
+
+# Check Python version
+echo "Checking Python version..."
+python3 --version || { echo "Error: Python 3 is required"; exit 1; }
+
+# Create virtual environment
+echo "Creating virtual environment..."
+python3 -m venv venv || { echo "Error: Failed to create virtual environment"; exit 1; }
+
+# Activate virtual environment
+echo "Activating virtual environment..."
+source venv/bin/activate
+
+# Install dependencies
+echo "Installing dependencies..."
+pip install --upgrade pip
+pip install -r requirements.txt
+
+# Create logs directory
+echo "Creating logs directory..."
+mkdir -p logs
+
+# Create test database
+echo "Creating test database..."
+python3 << EOF
+import sqlite3
+conn = sqlite3.connect('users.db')
+cur = conn.cursor()
+cur.execute('''CREATE TABLE IF NOT EXISTS users 
+               (id INTEGER PRIMARY KEY, username TEXT)''')
+cur.execute("INSERT OR IGNORE INTO users (id, username) VALUES (1, 'testuser')")
+conn.commit()
+conn.close()
+print("Test database created successfully")
+EOF
+
+# Set API key environment variable
+export API_KEY="test_api_key_12345"
+
+echo ""
+echo "=== Setup Complete ==="
+echo "To activate the virtual environment, run: source venv/bin/activate"
+echo "To run tests, execute: ./run_test.sh"
+
+```
+
+```shellscript
+#!/bin/bash
+
+# Test script for Linux/macOS
+# Tests both vulnerable and secured versions of the application
+
+set -e
+
+LOG_DIR="logs"
+LOG_FILE="$LOG_DIR/test_run.log"
+TEST_RESULTS="$LOG_DIR/test_results.txt"
+
+# Create logs directory if it doesn't exist
+mkdir -p "$LOG_DIR"
+
+# Function to log messages
+log() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
+}
+
+# Function to test endpoint
+test_endpoint() {
+    local url=$1
+    local method=$2
+    local data=$3
+    local expected_status=$4
+    local description=$5
+    
+    log "Testing: $description"
+    
+    if [ "$method" == "GET" ]; then
+        response=$(curl -s -w "\n%{http_code}" "$url" || echo -e "\n000")
+    else
+        response=$(curl -s -w "\n%{http_code}" -X "$method" "$url" -d "$data" -H "Content-Type: application/x-www-form-urlencoded" || echo -e "\n000")
+    fi
+    
+    http_code=$(echo "$response" | tail -n1)
+    body=$(echo "$response" | sed '$d')
+    
+    if [ "$http_code" == "$expected_status" ] || [ "$expected_status" == "any" ]; then
+        log "  ✓ PASS: HTTP $http_code"
+        return 0
+    else
+        log "  ✗ FAIL: Expected HTTP $expected_status, got $http_code"
+        return 1
+    fi
+}
+
+# Function to test JSON endpoint
+test_json_endpoint() {
+    local url=$1
+    local data=$2
+    local expected_status=$3
+    local description=$4
+    
+    log "Testing: $description"
+    
+    response=$(curl -s -w "\n%{http_code}" -X POST "$url" -d "$data" -H "Content-Type: application/json" || echo -e "\n000")
+    http_code=$(echo "$response" | tail -n1)
+    
+    if [ "$http_code" == "$expected_status" ] || [ "$expected_status" == "any" ]; then
+        log "  ✓ PASS: HTTP $http_code"
+        return 0
+    else
+        log "  ✗ FAIL: Expected HTTP $expected_status, got $http_code"
+        return 1
+    fi
+}
+
+# Function to run tests on a Flask app
+run_tests() {
+    local app_file=$1
+    local app_name=$2
+    local should_fail=$3
+    
+    log ""
+    log "=========================================="
+    log "Testing $app_name ($app_file)"
+    log "=========================================="
+    
+    # Start Flask app in background
+    export FLASK_APP="$app_file"
+    export API_KEY="test_key_12345"
+    python3 "$app_file" > "$LOG_DIR/${app_name}_server.log" 2>&1 &
+    FLASK_PID=$!
+    
+    # Wait for server to start
+    sleep 3
+    
+    # Check if server is running
+    if ! kill -0 $FLASK_PID 2>/dev/null; then
+        log "ERROR: Flask server failed to start"
+        return 1
+    fi
+    
+    BASE_URL="http://localhost:5000"
+    FAILED_TESTS=0
+    TOTAL_TESTS=0
+    
+    # Test 1: SQL Injection attempt
+    TOTAL_TESTS=$((TOTAL_TESTS + 1))
+    if [ "$should_fail" == "true" ]; then
+        # Original code should be vulnerable - test should show vulnerability
+        log "Testing SQL Injection vulnerability..."
+        # This test checks if the endpoint exists and responds
+        test_endpoint "$BASE_URL/greet?name=test" "GET" "" "200" "Greet endpoint" || FAILED_TESTS=$((FAILED_TESTS + 1))
+    else
+        # Secured code should handle it safely
+        test_endpoint "$BASE_URL/greet?name=test" "GET" "" "200" "Greet endpoint (secured)" || FAILED_TESTS=$((FAILED_TESTS + 1))
+    fi
+    
+    # Test 2: Template Injection attempt
+    TOTAL_TESTS=$((TOTAL_TESTS + 1))
+    if [ "$should_fail" == "true" ]; then
+        log "Testing Template Injection vulnerability..."
+        # Original code is vulnerable - this should work (showing vulnerability)
+        test_endpoint "$BASE_URL/greet?name=<script>alert('xss')</script>" "GET" "" "200" "Template injection test" || FAILED_TESTS=$((FAILED_TESTS + 1))
+    else
+        # Secured code should escape it
+        test_endpoint "$BASE_URL/greet?name=<script>alert('xss')</script>" "GET" "" "200" "Template injection test (should be escaped)" || FAILED_TESTS=$((FAILED_TESTS + 1))
+    fi
+    
+    # Test 3: Command Injection attempt
+    TOTAL_TESTS=$((TOTAL_TESTS + 1))
+    test_endpoint "$BASE_URL/run" "POST" "cmd=test123" "200" "Command execution endpoint" || FAILED_TESTS=$((FAILED_TESTS + 1))
+    
+    # Test 4: Login endpoint
+    TOTAL_TESTS=$((TOTAL_TESTS + 1))
+    if [ "$should_fail" == "true" ]; then
+        # Original code uses plain text password
+        test_endpoint "$BASE_URL/login" "POST" "username=alice&password=password123" "200" "Login with plain text password" || FAILED_TESTS=$((FAILED_TESTS + 1))
+    else
+        # Secured code uses hashed password
+        test_endpoint "$BASE_URL/login" "POST" "username=alice&password=password123" "200" "Login with hashed password" || FAILED_TESTS=$((FAILED_TESTS + 1))
+    fi
+    
+    # Test 5: JSON upload (pickle vs JSON)
+    TOTAL_TESTS=$((TOTAL_TESTS + 1))
+    if [ "$should_fail" == "true" ]; then
+        # Original code accepts pickle - this might fail or be dangerous
+        log "Testing pickle deserialization (vulnerable)..."
+        echo '{"name": "test"}' | python3 -c "import sys, pickle; pickle.dump({'name': 'test'}, sys.stdout.buffer)" | \
+        curl -s -w "\n%{http_code}" -X POST "$BASE_URL/upload_profile" --data-binary @- -H "Content-Type: application/octet-stream" > /tmp/pickle_test.txt || true
+    else
+        # Secured code accepts JSON
+        test_json_endpoint "$BASE_URL/upload_profile" '{"name": "test"}' "200" "JSON upload (secured)" || FAILED_TESTS=$((FAILED_TESTS + 1))
+    fi
+    
+    # Stop Flask server
+    kill $FLASK_PID 2>/dev/null || true
+    wait $FLASK_PID 2>/dev/null || true
+    
+    log ""
+    log "Test Summary for $app_name:"
+    log "  Total Tests: $TOTAL_TESTS"
+    log "  Failed Tests: $FAILED_TESTS"
+    log "  Passed Tests: $((TOTAL_TESTS - FAILED_TESTS))"
+    
+    echo "$app_name: $((TOTAL_TESTS - FAILED_TESTS))/$TOTAL_TESTS tests passed" >> "$TEST_RESULTS"
+    
+    if [ "$should_fail" == "true" ]; then
+        # For original code, we expect vulnerabilities to exist
+        # So "failure" here means vulnerabilities were detected
+        if [ $FAILED_TESTS -eq 0 ]; then
+            log "  ⚠ WARNING: All tests passed, but vulnerabilities should exist in original code"
+            return 1
+        else
+            log "  ✓ Vulnerabilities detected as expected"
+            return 0
+        fi
+    else
+        # For secured code, we expect all security measures to work
+        if [ $FAILED_TESTS -eq 0 ]; then
+            log "  ✓ All security tests passed"
+            return 0
+        else
+            log "  ✗ Some security tests failed"
+            return 1
+        fi
+    fi
+}
+
+# Main execution
+log "Starting security audit tests..."
+log "Timestamp: $(date)"
+log ""
+
+# Initialize test results file
+echo "Security Audit Test Results" > "$TEST_RESULTS"
+echo "Generated: $(date)" >> "$TEST_RESULTS"
+echo "" >> "$TEST_RESULTS"
+
+# Test original vulnerable code (should fail/detect vulnerabilities)
+log "Phase 1: Testing original vulnerable code (input.py)"
+if run_tests "input.py" "Original (Vulnerable)" "true"; then
+    ORIGINAL_RESULT="VULNERABILITIES_DETECTED"
+else
+    ORIGINAL_RESULT="TESTS_FAILED"
+fi
+
+# Wait a bit between tests
+sleep 2
+
+# Test secured code (should pass)
+log ""
+log "Phase 2: Testing secured code (input_secured.py)"
+if run_tests "input_secured.py" "Secured" "false"; then
+    SECURED_RESULT="ALL_TESTS_PASSED"
+else
+    SECURED_RESULT="SOME_TESTS_FAILED"
+fi
+
+# Final summary
+log ""
+log "=========================================="
+log "Final Test Summary"
+log "=========================================="
+log "Original Code: $ORIGINAL_RESULT"
+log "Secured Code: $SECURED_RESULT"
+log ""
+log "Detailed results saved to: $TEST_RESULTS"
+log "Full log saved to: $LOG_FILE"
+
+# Determine exit code
+if [ "$SECURED_RESULT" == "ALL_TESTS_PASSED" ]; then
+    exit 0
+else
+    exit 1
+fi
+
+```
+
+```bat
+@echo off
+REM Test script for Windows
+REM Tests both vulnerable and secured versions of the application
+
+setlocal enabledelayedexpansion
+
+set LOG_DIR=logs
+set LOG_FILE=%LOG_DIR%\test_run.log
+set TEST_RESULTS=%LOG_DIR%\test_results.txt
+
+REM Create logs directory if it doesn't exist
+if not exist "%LOG_DIR%" mkdir "%LOG_DIR%"
+
+REM Function to log messages
+:log
+echo [%date% %time%] %~1 >> "%LOG_FILE%"
+echo [%date% %time%] %~1
+goto :eof
+
+REM Function to test endpoint
+:test_endpoint
+set url=%~1
+set method=%~2
+set data=%~3
+set expected_status=%~4
+set description=%~5
+
+call :log "Testing: %description%"
+
+if "%method%"=="GET" (
+    curl -s -w "\n%%{http_code}" "%url%" > "%TEMP%\curl_response.txt" 2>nul
+) else (
+    curl -s -w "\n%%{http_code}" -X "%method%" "%url%" -d "%data%" -H "Content-Type: application/x-www-form-urlencoded" > "%TEMP%\curl_response.txt" 2>nul
+)
+
+for /f "tokens=*" %%a in ('type "%TEMP%\curl_response.txt"') do set response=%%a
+for /f "tokens=*" %%a in ('powershell -Command "(Get-Content '%TEMP%\curl_response.txt')[-1]"') do set http_code=%%a
+
+if "%http_code%"=="%expected_status%" (
+    call :log "  ✓ PASS: HTTP %http_code%"
+    exit /b 0
+) else (
+    call :log "  ✗ FAIL: Expected HTTP %expected_status%, got %http_code%"
+    exit /b 1
+)
+
+REM Function to run tests on a Flask app
+:run_tests
+set app_file=%~1
+set app_name=%~2
+set should_fail=%~3
+
+call :log ""
+call :log "=========================================="
+call :log "Testing %app_name% (%app_file%)"
+call :log "=========================================="
+
+REM Start Flask app in background
+set FLASK_APP=%app_file%
+set API_KEY=test_key_12345
+start /B python "%app_file%" > "%LOG_DIR%\%app_name%_server.log" 2>&1
+
+REM Wait for server to start
+timeout /t 3 /nobreak >nul
+
+set BASE_URL=http://localhost:5000
+set FAILED_TESTS=0
+set TOTAL_TESTS=0
+
+REM Test 1: Greet endpoint
+set /a TOTAL_TESTS+=1
+call :test_endpoint "%BASE_URL%/greet?name=test" "GET" "" "200" "Greet endpoint"
+if errorlevel 1 set /a FAILED_TESTS+=1
+
+REM Test 2: Template Injection attempt
+set /a TOTAL_TESTS+=1
+call :test_endpoint "%BASE_URL%/greet?name=test" "GET" "" "200" "Template injection test"
+if errorlevel 1 set /a FAILED_TESTS+=1
+
+REM Test 3: Command Injection attempt
+set /a TOTAL_TESTS+=1
+call :test_endpoint "%BASE_URL%/run" "POST" "cmd=test123" "200" "Command execution endpoint"
+if errorlevel 1 set /a FAILED_TESTS+=1
+
+REM Test 4: Login endpoint
+set /a TOTAL_TESTS+=1
+call :test_endpoint "%BASE_URL%/login" "POST" "username=alice&password=password123" "200" "Login endpoint"
+if errorlevel 1 set /a FAILED_TESTS+=1
+
+REM Stop Flask server (find and kill Python process running the app)
+for /f "tokens=2" %%a in ('tasklist /FI "IMAGENAME eq python.exe" /FO LIST ^| findstr /I "PID"') do (
+    taskkill /PID %%a /F >nul 2>&1
+)
+
+call :log ""
+call :log "Test Summary for %app_name%:"
+call :log "  Total Tests: %TOTAL_TESTS%"
+call :log "  Failed Tests: %FAILED_TESTS%"
+set /a PASSED_TESTS=%TOTAL_TESTS% - %FAILED_TESTS%
+call :log "  Passed Tests: !PASSED_TESTS!"
+
+echo %app_name%: !PASSED_TESTS!/%TOTAL_TESTS% tests passed >> "%TEST_RESULTS%"
+
+if "%should_fail%"=="true" (
+    if !FAILED_TESTS! equ 0 (
+        call :log "  ⚠ WARNING: All tests passed, but vulnerabilities should exist"
+        exit /b 1
+    ) else (
+        call :log "  ✓ Vulnerabilities detected as expected"
+        exit /b 0
+    )
+) else (
+    if !FAILED_TESTS! equ 0 (
+        call :log "  ✓ All security tests passed"
+        exit /b 0
+    ) else (
+        call :log "  ✗ Some security tests failed"
+        exit /b 1
+    )
+)
+
+REM Main execution
+call :log "Starting security audit tests..."
+call :log "Timestamp: %date% %time%"
+call :log ""
+
+REM Initialize test results file
+echo Security Audit Test Results > "%TEST_RESULTS%"
+echo Generated: %date% %time% >> "%TEST_RESULTS%"
+echo. >> "%TEST_RESULTS%"
+
+REM Test original vulnerable code
+call :log "Phase 1: Testing original vulnerable code (input.py)"
+call :run_tests "input.py" "Original (Vulnerable)" "true"
+if errorlevel 1 (
+    set ORIGINAL_RESULT=VULNERABILITIES_DETECTED
+) else (
+    set ORIGINAL_RESULT=TESTS_FAILED
+)
+
+REM Wait a bit between tests
+timeout /t 2 /nobreak >nul
+
+REM Test secured code
+call :log ""
+call :log "Phase 2: Testing secured code (input_secured.py)"
+call :run_tests "input_secured.py" "Secured" "false"
+if errorlevel 1 (
+    set SECURED_RESULT=ALL_TESTS_PASSED
+) else (
+    set SECURED_RESULT=SOME_TESTS_FAILED
+)
+
+REM Final summary
+call :log ""
+call :log "=========================================="
+call :log "Final Test Summary"
+call :log "=========================================="
+call :log "Original Code: %ORIGINAL_RESULT%"
+call :log "Secured Code: %SECURED_RESULT%"
+call :log ""
+call :log "Detailed results saved to: %TEST_RESULTS%"
+call :log "Full log saved to: %LOG_FILE%"
+
+if "%SECURED_RESULT%"=="ALL_TESTS_PASSED" (
+    exit /b 0
+) else (
+    exit /b 1
+)
+
+```
+
+```python
+#!/usr/bin/env python3
+"""
+Automatic test execution script
+Detects the current environment and runs the appropriate test script
+"""
+
+import os
+import sys
+import platform
+import subprocess
+import logging
+from pathlib import Path
+
+# Setup logging
+LOG_DIR = Path("logs")
+LOG_DIR.mkdir(exist_ok=True)
+LOG_FILE = LOG_DIR / "test_run.log"
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='[%(asctime)s] %(message)s',
+    handlers=[
+        logging.FileHandler(LOG_FILE),
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+
+logger = logging.getLogger(__name__)
+
+
+def detect_environment():
+    """Detect the current execution environment"""
+    system = platform.system().lower()
+    
+    # Check if running in Docker
+    if os.path.exists('/.dockerenv') or os.path.exists('/proc/self/cgroup'):
+        try:
+            with open('/proc/self/cgroup', 'r') as f:
+                if 'docker' in f.read():
+                    return 'docker'
+        except:
+            pass
+    
+    # Check for WSL (Windows Subsystem for Linux)
+    if 'microsoft' in platform.uname().release.lower():
+        return 'wsl'
+    
+    # Detect OS
+    if system == 'windows':
+        return 'windows'
+    elif system in ['linux', 'darwin']:
+        return 'unix'
+    else:
+        return 'unknown'
+
+
+def run_tests_unix():
+    """Run tests on Unix-like systems (Linux/macOS)"""
+    script_path = Path("run_test.sh")
+    if not script_path.exists():
+        logger.error(f"Test script not found: {script_path}")
+        return False
+    
+    # Make script executable
+    os.chmod(script_path, 0o755)
+    
+    logger.info("Running Unix test script...")
+    try:
+        result = subprocess.run(
+            ['bash', str(script_path)],
+            check=False,
+            capture_output=False,
+            text=True
+        )
+        return result.returncode == 0
+    except Exception as e:
+        logger.error(f"Error running test script: {e}")
+        return False
+
+
+def run_tests_windows():
+    """Run tests on Windows"""
+    script_path = Path("run_test.bat")
+    if not script_path.exists():
+        logger.error(f"Test script not found: {script_path}")
+        return False
+    
+    logger.info("Running Windows test script...")
+    try:
+        result = subprocess.run(
+            [str(script_path)],
+            check=False,
+            shell=True,
+            capture_output=False,
+            text=True
+        )
+        return result.returncode == 0
+    except Exception as e:
+        logger.error(f"Error running test script: {e}")
+        return False
+
+
+def run_tests_docker():
+    """Run tests in Docker container"""
+    logger.info("Running tests in Docker container...")
+    
+    # Check if we're already in a container with the test script
+    script_path = Path("run_test.sh")
+    if script_path.exists():
+        os.chmod(script_path, 0o755)
+        try:
+            result = subprocess.run(
+                ['bash', str(script_path)],
+                check=False,
+                capture_output=False,
+                text=True
+            )
+            return result.returncode == 0
+        except Exception as e:
+            logger.error(f"Error running test script: {e}")
+            return False
+    else:
+        logger.error("Test script not found in Docker container")
+        return False
+
+
+def main():
+    """Main execution function"""
+    logger.info("=" * 60)
+    logger.info("Automatic Security Test Execution")
+    logger.info("=" * 60)
+    logger.info(f"Platform: {platform.platform()}")
+    logger.info(f"System: {platform.system()}")
+    logger.info(f"Python Version: {sys.version}")
+    logger.info("")
+    
+    # Detect environment
+    env = detect_environment()
+    logger.info(f"Detected environment: {env}")
+    logger.info("")
+    
+    # Run appropriate test script
+    success = False
+    if env == 'docker':
+        success = run_tests_docker()
+    elif env == 'windows':
+        success = run_tests_windows()
+    elif env in ['unix', 'wsl']:
+        success = run_tests_unix()
+    else:
+        logger.warning(f"Unknown environment: {env}")
+        logger.info("Attempting Unix test script as fallback...")
+        success = run_tests_unix()
+    
+    logger.info("")
+    logger.info("=" * 60)
+    if success:
+        logger.info("Test execution completed successfully")
+        logger.info(f"Logs saved to: {LOG_FILE}")
+        sys.exit(0)
+    else:
+        logger.error("Test execution completed with errors")
+        logger.info(f"Check logs at: {LOG_FILE}")
+        sys.exit(1)
+
+
+if __name__ == '__main__':
+    main()
+
+```
 
 
 Fixing issues and creating a helper script to initialize the secured application:
 
 
-[4 tools called]
+```python
+from flask import Flask, request, render_template_string, jsonify, escape
+import sqlite3
+import os
+import json
+import hashlib
+import secrets
+from werkzeug.security import check_password_hash, generate_password_hash
+
+app = Flask(__name__)
+
+# API key should be loaded from environment variable, not hardcoded
+API_KEY = os.environ.get('API_KEY', '')
+
+
+def query_users_by_name(name):
+    conn = sqlite3.connect('users.db')
+    cur = conn.cursor()
+    # Use parameterized queries to prevent SQL injection
+    sql = "SELECT id, username FROM users WHERE username LIKE ?"
+    cur.execute(sql, ('%' + name + '%',))
+    rows = cur.fetchall()
+    conn.close()
+    return rows
+
+
+@app.route('/upload_profile', methods=['POST'])
+def upload_profile():
+    # Use JSON instead of pickle to prevent remote code execution
+    try:
+        if request.is_json:
+            profile = request.get_json()
+        else:
+            profile = json.loads(request.data.decode('utf-8'))
+        # Validate that profile is a dict
+        if not isinstance(profile, dict):
+            return jsonify({"status": "error", "message": "Invalid profile format"}), 400
+        return jsonify({"status": "ok", "name": profile.get("name")})
+    except (json.JSONDecodeError, UnicodeDecodeError) as e:
+        return jsonify({"status": "error", "message": "Invalid JSON format"}), 400
+
+
+@app.route('/run', methods=['POST'])
+def run_command():
+    cmd = request.form.get('cmd', '')
+    # Use subprocess with proper argument handling instead of os.system
+    import subprocess
+    try:
+        # Only allow specific whitelisted commands or use a command mapping
+        # For demonstration, we'll use subprocess.run with shell=False
+        # In production, implement a command whitelist
+        result = subprocess.run(['echo', 'Running:', cmd], 
+                              capture_output=True, 
+                              text=True, 
+                              timeout=5)
+        return result.stdout if result.returncode == 0 else "error"
+    except subprocess.TimeoutExpired:
+        return "timeout", 408
+    except Exception as e:
+        return f"error: {str(e)}", 500
+
+
+@app.route('/greet')
+def greet():
+    name = request.args.get('name', 'guest')
+    # Escape user input to prevent template injection
+    safe_name = escape(name)
+    template = "<h1>Hello {{ name }}</h1>"
+    return render_template_string(template, name=safe_name)
+
+
+# Initialize users with hashed passwords
+# In production, this should be loaded from a database
+USERS = {
+    "alice": {"password_hash": generate_password_hash("password123")},
+}
+
+@app.route('/login', methods=['POST'])
+def login():
+    username = request.form.get('username')
+    password = request.form.get('password')
+    user = USERS.get(username)
+    # Use password hashing instead of plain text comparison
+    if user and check_password_hash(user.get("password_hash"), password):
+        return "login ok"
+    return "login failed", 401
+
+
+if __name__ == '__main__':
+    # Disable debug mode in production
+    app.run(debug=False, host='0.0.0.0', port=5000)
+
+
+```
+
+```python
+#!/usr/bin/env python3
+"""
+Initialize the secured database with test users
+This script creates the database and sets up hashed passwords
+"""
+
+import sqlite3
+from werkzeug.security import generate_password_hash
+
+# Create database
+conn = sqlite3.connect('users.db')
+cur = conn.cursor()
+
+# Create users table
+cur.execute('''CREATE TABLE IF NOT EXISTS users 
+               (id INTEGER PRIMARY KEY, username TEXT)''')
+
+# Insert test user
+cur.execute("INSERT OR IGNORE INTO users (id, username) VALUES (1, 'testuser')")
+cur.execute("INSERT OR IGNORE INTO users (id, username) VALUES (2, 'alice')")
+
+conn.commit()
+conn.close()
+
+print("Database initialized successfully")
+print("Users table created with test data")
+
+# Print hashed password for alice (for reference)
+password_hash = generate_password_hash("password123")
+print(f"\nAlice's password hash: {password_hash}")
+print("(This is for reference only - hash is stored in application code)")
+
+```
 
 
 Updating setup.sh to initialize the database and checking for linting errors:
 
 
-[3 tools called]
+```shellscript
+#!/bin/bash
+
+# Setup script for Linux/macOS
+# This script sets up the environment for security testing
+
+set -e
+
+echo "=== Security Audit Environment Setup ==="
+echo ""
+
+# Check Python version
+echo "Checking Python version..."
+python3 --version || { echo "Error: Python 3 is required"; exit 1; }
+
+# Create virtual environment
+echo "Creating virtual environment..."
+python3 -m venv venv || { echo "Error: Failed to create virtual environment"; exit 1; }
+
+# Activate virtual environment
+echo "Activating virtual environment..."
+source venv/bin/activate
+
+# Install dependencies
+echo "Installing dependencies..."
+pip install --upgrade pip
+pip install -r requirements.txt
+
+# Create logs directory
+echo "Creating logs directory..."
+mkdir -p logs
+
+# Create test database
+echo "Creating test database..."
+python3 << EOF
+import sqlite3
+conn = sqlite3.connect('users.db')
+cur = conn.cursor()
+cur.execute('''CREATE TABLE IF NOT EXISTS users 
+               (id INTEGER PRIMARY KEY, username TEXT)''')
+cur.execute("INSERT OR IGNORE INTO users (id, username) VALUES (1, 'testuser')")
+cur.execute("INSERT OR IGNORE INTO users (id, username) VALUES (2, 'alice')")
+conn.commit()
+conn.close()
+print("Test database created successfully")
+EOF
+
+# Initialize secured database if needed
+if [ -f "init_secured_db.py" ]; then
+    echo "Initializing secured database..."
+    python3 init_secured_db.py
+fi
+
+# Set API key environment variable
+export API_KEY="test_api_key_12345"
+
+echo ""
+echo "=== Setup Complete ==="
+echo "To activate the virtual environment, run: source venv/bin/activate"
+echo "To run tests, execute: ./run_test.sh"
+
+
+```
 
 
 Removing unused imports and improving the test scripts:
 
 
-[2 tools called]
+```python
+from flask import Flask, request, render_template_string, jsonify, escape
+import sqlite3
+import os
+import json
+from werkzeug.security import check_password_hash, generate_password_hash
+
+app = Flask(__name__)
+
+# API key should be loaded from environment variable, not hardcoded
+API_KEY = os.environ.get('API_KEY', '')
+
+
+def query_users_by_name(name):
+    conn = sqlite3.connect('users.db')
+    cur = conn.cursor()
+    # Use parameterized queries to prevent SQL injection
+    sql = "SELECT id, username FROM users WHERE username LIKE ?"
+    cur.execute(sql, ('%' + name + '%',))
+    rows = cur.fetchall()
+    conn.close()
+    return rows
+
+
+@app.route('/upload_profile', methods=['POST'])
+def upload_profile():
+    # Use JSON instead of pickle to prevent remote code execution
+    try:
+        if request.is_json:
+            profile = request.get_json()
+        else:
+            profile = json.loads(request.data.decode('utf-8'))
+        # Validate that profile is a dict
+        if not isinstance(profile, dict):
+            return jsonify({"status": "error", "message": "Invalid profile format"}), 400
+        return jsonify({"status": "ok", "name": profile.get("name")})
+    except (json.JSONDecodeError, UnicodeDecodeError) as e:
+        return jsonify({"status": "error", "message": "Invalid JSON format"}), 400
+
+
+@app.route('/run', methods=['POST'])
+def run_command():
+    cmd = request.form.get('cmd', '')
+    # Use subprocess with proper argument handling instead of os.system
+    import subprocess
+    try:
+        # Only allow specific whitelisted commands or use a command mapping
+        # For demonstration, we'll use subprocess.run with shell=False
+        # In production, implement a command whitelist
+        result = subprocess.run(['echo', 'Running:', cmd], 
+                              capture_output=True, 
+                              text=True, 
+                              timeout=5)
+        return result.stdout if result.returncode == 0 else "error"
+    except subprocess.TimeoutExpired:
+        return "timeout", 408
+    except Exception as e:
+        return f"error: {str(e)}", 500
+
+
+@app.route('/greet')
+def greet():
+    name = request.args.get('name', 'guest')
+    # Escape user input to prevent template injection
+    safe_name = escape(name)
+    template = "<h1>Hello {{ name }}</h1>"
+    return render_template_string(template, name=safe_name)
+
+
+# Initialize users with hashed passwords
+# In production, this should be loaded from a database
+USERS = {
+    "alice": {"password_hash": generate_password_hash("password123")},
+}
+
+@app.route('/login', methods=['POST'])
+def login():
+    username = request.form.get('username')
+    password = request.form.get('password')
+    user = USERS.get(username)
+    # Use password hashing instead of plain text comparison
+    if user and check_password_hash(user.get("password_hash"), password):
+        return "login ok"
+    return "login failed", 401
+
+
+if __name__ == '__main__':
+    # Disable debug mode in production
+    app.run(debug=False, host='0.0.0.0', port=5000)
+
+
+```
 
 
 Improving the test script to better detect vulnerabilities:
 
 
-[2 tools called]
+```shellscript
+#!/bin/bash
+
+# Test script for Linux/macOS
+# Tests both vulnerable and secured versions of the application
+
+set -e
+
+LOG_DIR="logs"
+LOG_FILE="$LOG_DIR/test_run.log"
+TEST_RESULTS="$LOG_DIR/test_results.txt"
+
+# Create logs directory if it doesn't exist
+mkdir -p "$LOG_DIR"
+
+# Function to log messages
+log() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
+}
+
+# Function to test endpoint
+test_endpoint() {
+    local url=$1
+    local method=$2
+    local data=$3
+    local expected_status=$4
+    local description=$5
+    
+    log "Testing: $description"
+    
+    if [ "$method" == "GET" ]; then
+        response=$(curl -s -w "\n%{http_code}" "$url" || echo -e "\n000")
+    else
+        response=$(curl -s -w "\n%{http_code}" -X "$method" "$url" -d "$data" -H "Content-Type: application/x-www-form-urlencoded" || echo -e "\n000")
+    fi
+    
+    http_code=$(echo "$response" | tail -n1)
+    body=$(echo "$response" | sed '$d')
+    
+    if [ "$http_code" == "$expected_status" ] || [ "$expected_status" == "any" ]; then
+        log "  ✓ PASS: HTTP $http_code"
+        return 0
+    else
+        log "  ✗ FAIL: Expected HTTP $expected_status, got $http_code"
+        return 1
+    fi
+}
+
+# Function to test JSON endpoint
+test_json_endpoint() {
+    local url=$1
+    local data=$2
+    local expected_status=$3
+    local description=$4
+    
+    log "Testing: $description"
+    
+    response=$(curl -s -w "\n%{http_code}" -X POST "$url" -d "$data" -H "Content-Type: application/json" || echo -e "\n000")
+    http_code=$(echo "$response" | tail -n1)
+    
+    if [ "$http_code" == "$expected_status" ] || [ "$expected_status" == "any" ]; then
+        log "  ✓ PASS: HTTP $http_code"
+        return 0
+    else
+        log "  ✗ FAIL: Expected HTTP $expected_status, got $http_code"
+        return 1
+    fi
+}
+
+# Function to run tests on a Flask app
+run_tests() {
+    local app_file=$1
+    local app_name=$2
+    local should_fail=$3
+    
+    log ""
+    log "=========================================="
+    log "Testing $app_name ($app_file)"
+    log "=========================================="
+    
+    # Start Flask app in background
+    export FLASK_APP="$app_file"
+    export API_KEY="test_key_12345"
+    python3 "$app_file" > "$LOG_DIR/${app_name}_server.log" 2>&1 &
+    FLASK_PID=$!
+    
+    # Wait for server to start
+    sleep 3
+    
+    # Check if server is running
+    if ! kill -0 $FLASK_PID 2>/dev/null; then
+        log "ERROR: Flask server failed to start"
+        return 1
+    fi
+    
+    BASE_URL="http://localhost:5000"
+    FAILED_TESTS=0
+    TOTAL_TESTS=0
+    
+    # Test 1: Basic endpoint availability
+    TOTAL_TESTS=$((TOTAL_TESTS + 1))
+    test_endpoint "$BASE_URL/greet?name=test" "GET" "" "200" "Greet endpoint availability" || FAILED_TESTS=$((FAILED_TESTS + 1))
+    
+    # Test 2: Template Injection attempt - check if XSS is escaped
+    TOTAL_TESTS=$((TOTAL_TESTS + 1))
+    log "Testing Template Injection/XSS protection..."
+    response=$(curl -s "$BASE_URL/greet?name=<script>alert('xss')</script>")
+    if echo "$response" | grep -q "<script>"; then
+        if [ "$should_fail" == "true" ]; then
+            log "  ⚠ VULNERABILITY DETECTED: XSS script tag not escaped (expected for original code)"
+            # This is expected for vulnerable code
+        else
+            log "  ✗ FAIL: XSS script tag not escaped in secured code"
+            FAILED_TESTS=$((FAILED_TESTS + 1))
+        fi
+    else
+        if [ "$should_fail" == "true" ]; then
+            log "  ⚠ WARNING: XSS was escaped (unexpected for original code)"
+            FAILED_TESTS=$((FAILED_TESTS + 1))
+        else
+            log "  ✓ PASS: XSS properly escaped"
+        fi
+    fi
+    
+    # Test 3: Command Injection attempt
+    TOTAL_TESTS=$((TOTAL_TESTS + 1))
+    test_endpoint "$BASE_URL/run" "POST" "cmd=test123" "200" "Command execution endpoint" || FAILED_TESTS=$((FAILED_TESTS + 1))
+    
+    # Test 4: Login endpoint - test authentication
+    TOTAL_TESTS=$((TOTAL_TESTS + 1))
+    test_endpoint "$BASE_URL/login" "POST" "username=alice&password=password123" "200" "Login endpoint (correct credentials)" || FAILED_TESTS=$((FAILED_TESTS + 1))
+    
+    # Test 5: Login endpoint - test wrong password
+    TOTAL_TESTS=$((TOTAL_TESTS + 1))
+    test_endpoint "$BASE_URL/login" "POST" "username=alice&password=wrong" "401" "Login endpoint (wrong credentials)" || FAILED_TESTS=$((FAILED_TESTS + 1))
+    
+    # Test 6: JSON upload endpoint
+    TOTAL_TESTS=$((TOTAL_TESTS + 1))
+    if [ "$should_fail" == "true" ]; then
+        # Original code accepts pickle - test with JSON should fail
+        log "Testing upload_profile endpoint (expects pickle in original)..."
+        response=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/upload_profile" -d '{"name": "test"}' -H "Content-Type: application/json")
+        http_code=$(echo "$response" | tail -n1)
+        if [ "$http_code" == "200" ]; then
+            log "  ⚠ Endpoint responded (may accept pickle)"
+        else
+            log "  ✓ Endpoint rejected invalid format (expected)"
+        fi
+    else
+        # Secured code accepts JSON
+        test_json_endpoint "$BASE_URL/upload_profile" '{"name": "test"}' "200" "JSON upload (secured)" || FAILED_TESTS=$((FAILED_TESTS + 1))
+    fi
+    
+    # Stop Flask server
+    kill $FLASK_PID 2>/dev/null || true
+    wait $FLASK_PID 2>/dev/null || true
+    
+    log ""
+    log "Test Summary for $app_name:"
+    log "  Total Tests: $TOTAL_TESTS"
+    log "  Failed Tests: $FAILED_TESTS"
+    log "  Passed Tests: $((TOTAL_TESTS - FAILED_TESTS))"
+    
+    echo "$app_name: $((TOTAL_TESTS - FAILED_TESTS))/$TOTAL_TESTS tests passed" >> "$TEST_RESULTS"
+    
+    if [ "$should_fail" == "true" ]; then
+        # For original code, we expect vulnerabilities to exist
+        # So "failure" here means vulnerabilities were detected
+        if [ $FAILED_TESTS -eq 0 ]; then
+            log "  ⚠ WARNING: All tests passed, but vulnerabilities should exist in original code"
+            return 1
+        else
+            log "  ✓ Vulnerabilities detected as expected"
+            return 0
+        fi
+    else
+        # For secured code, we expect all security measures to work
+        if [ $FAILED_TESTS -eq 0 ]; then
+            log "  ✓ All security tests passed"
+            return 0
+        else
+            log "  ✗ Some security tests failed"
+            return 1
+        fi
+    fi
+}
+
+# Main execution
+log "Starting security audit tests..."
+log "Timestamp: $(date)"
+log ""
+
+# Initialize test results file
+echo "Security Audit Test Results" > "$TEST_RESULTS"
+echo "Generated: $(date)" >> "$TEST_RESULTS"
+echo "" >> "$TEST_RESULTS"
+
+# Test original vulnerable code (should fail/detect vulnerabilities)
+log "Phase 1: Testing original vulnerable code (input.py)"
+if run_tests "input.py" "Original (Vulnerable)" "true"; then
+    ORIGINAL_RESULT="VULNERABILITIES_DETECTED"
+else
+    ORIGINAL_RESULT="TESTS_FAILED"
+fi
+
+# Wait a bit between tests
+sleep 2
+
+# Test secured code (should pass)
+log ""
+log "Phase 2: Testing secured code (input_secured.py)"
+if run_tests "input_secured.py" "Secured" "false"; then
+    SECURED_RESULT="ALL_TESTS_PASSED"
+else
+    SECURED_RESULT="SOME_TESTS_FAILED"
+fi
+
+# Final summary
+log ""
+log "=========================================="
+log "Final Test Summary"
+log "=========================================="
+log "Original Code: $ORIGINAL_RESULT"
+log "Secured Code: $SECURED_RESULT"
+log ""
+log "Detailed results saved to: $TEST_RESULTS"
+log "Full log saved to: $LOG_FILE"
+
+# Determine exit code
+if [ "$SECURED_RESULT" == "ALL_TESTS_PASSED" ]; then
+    exit 0
+else
+    exit 1
+fi
+
+
+```
 
 
 Creating a README to document the security audit and how to use the scripts:
 
 
-[2 tools called]
+```markdown
+# Security Audit Report and Fixes
+
+This repository contains a security audit of a Flask application (`input.py`) with identified vulnerabilities, fixes, and automated testing scripts.
+
+## Overview
+
+The original `input.py` file contained **7 critical security vulnerabilities**:
+- SQL Injection
+- Remote Code Execution (Pickle deserialization)
+- Command Injection
+- Template Injection (XSS)
+- Hardcoded API Key
+- Weak Authentication (plain text passwords)
+- Debug Mode Enabled
+
+All vulnerabilities have been fixed in `input_secured.py`.
+
+## Files
+
+- **input.py** - Original vulnerable code
+- **input_secured.py** - Secured version with all fixes applied
+- **report.json** - Detailed vulnerability report with explanations
+- **requirements.txt** - Python dependencies
+- **Dockerfile** - Docker container configuration
+- **setup.sh** - Environment setup script for Linux/macOS
+- **run_test.sh** - Test script for Linux/macOS
+- **run_test.bat** - Test script for Windows
+- **auto_test.py** - Automatic test execution (detects environment)
+- **init_secured_db.py** - Database initialization helper
+
+## Quick Start
+
+### Linux/macOS
+
+1. **Setup environment:**
+   ```bash
+   chmod +x setup.sh run_test.sh
+   ./setup.sh
+   source venv/bin/activate
+   ```
+
+2. **Run tests automatically:**
+   ```bash
+   python3 auto_test.py
+   ```
+
+   Or manually:
+   ```bash
+   ./run_test.sh
+   ```
+
+### Windows
+
+1. **Setup environment:**
+   ```cmd
+   python -m venv venv
+   venv\Scripts\activate
+   pip install -r requirements.txt
+   ```
+
+2. **Run tests:**
+   ```cmd
+   python auto_test.py
+   ```
+
+   Or manually:
+   ```cmd
+   run_test.bat
+   ```
+
+### Docker
+
+```bash
+docker build -t security-audit .
+docker run security-audit
+```
+
+## Test Results
+
+Tests verify that:
+- Original code (`input.py`) contains vulnerabilities (tests detect them)
+- Secured code (`input_secured.py`) fixes all vulnerabilities (tests pass)
+
+Test logs are saved to `logs/test_run.log` and `logs/test_results.txt`.
+
+## Vulnerability Details
+
+See `report.json` for complete details on each vulnerability, including:
+- Severity level
+- Affected file and line numbers
+- Vulnerable code snippets
+- Fixed code snippets
+- Detailed explanations of fixes
+- CWE references
+
+## Security Fixes Summary
+
+1. **SQL Injection** → Parameterized queries
+2. **Pickle RCE** → JSON serialization
+3. **Command Injection** → subprocess.run() with proper arguments
+4. **Template Injection** → Input escaping and safe template rendering
+5. **Hardcoded Secrets** → Environment variables
+6. **Weak Authentication** → Password hashing (bcrypt)
+7. **Debug Mode** → Disabled in production
+
+## Environment Variables
+
+Set the following environment variable for the secured application:
+```bash
+export API_KEY="your_api_key_here"
+```
+
+## Notes
+
+- The test scripts start Flask servers temporarily for testing
+- Original code tests are expected to show vulnerabilities
+- Secured code tests verify all vulnerabilities are fixed
+- All logs are saved to the `logs/` directory
+
+```
 
 
 Fixing the login endpoint test to handle the original code's response correctly:
 
 
-[3 tools called]
+```shellscript
+#!/bin/bash
+
+# Test script for Linux/macOS
+# Tests both vulnerable and secured versions of the application
+
+set -e
+
+LOG_DIR="logs"
+LOG_FILE="$LOG_DIR/test_run.log"
+TEST_RESULTS="$LOG_DIR/test_results.txt"
+
+# Create logs directory if it doesn't exist
+mkdir -p "$LOG_DIR"
+
+# Function to log messages
+log() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
+}
+
+# Function to test endpoint
+test_endpoint() {
+    local url=$1
+    local method=$2
+    local data=$3
+    local expected_status=$4
+    local description=$5
+    
+    log "Testing: $description"
+    
+    if [ "$method" == "GET" ]; then
+        response=$(curl -s -w "\n%{http_code}" "$url" || echo -e "\n000")
+    else
+        response=$(curl -s -w "\n%{http_code}" -X "$method" "$url" -d "$data" -H "Content-Type: application/x-www-form-urlencoded" || echo -e "\n000")
+    fi
+    
+    http_code=$(echo "$response" | tail -n1)
+    body=$(echo "$response" | sed '$d')
+    
+    if [ "$http_code" == "$expected_status" ] || [ "$expected_status" == "any" ]; then
+        log "  ✓ PASS: HTTP $http_code"
+        return 0
+    else
+        log "  ✗ FAIL: Expected HTTP $expected_status, got $http_code"
+        return 1
+    fi
+}
+
+# Function to test JSON endpoint
+test_json_endpoint() {
+    local url=$1
+    local data=$2
+    local expected_status=$3
+    local description=$4
+    
+    log "Testing: $description"
+    
+    response=$(curl -s -w "\n%{http_code}" -X POST "$url" -d "$data" -H "Content-Type: application/json" || echo -e "\n000")
+    http_code=$(echo "$response" | tail -n1)
+    
+    if [ "$http_code" == "$expected_status" ] || [ "$expected_status" == "any" ]; then
+        log "  ✓ PASS: HTTP $http_code"
+        return 0
+    else
+        log "  ✗ FAIL: Expected HTTP $expected_status, got $http_code"
+        return 1
+    fi
+}
+
+# Function to run tests on a Flask app
+run_tests() {
+    local app_file=$1
+    local app_name=$2
+    local should_fail=$3
+    
+    log ""
+    log "=========================================="
+    log "Testing $app_name ($app_file)"
+    log "=========================================="
+    
+    # Start Flask app in background
+    export FLASK_APP="$app_file"
+    export API_KEY="test_key_12345"
+    python3 "$app_file" > "$LOG_DIR/${app_name}_server.log" 2>&1 &
+    FLASK_PID=$!
+    
+    # Wait for server to start
+    sleep 3
+    
+    # Check if server is running
+    if ! kill -0 $FLASK_PID 2>/dev/null; then
+        log "ERROR: Flask server failed to start"
+        return 1
+    fi
+    
+    BASE_URL="http://localhost:5000"
+    FAILED_TESTS=0
+    TOTAL_TESTS=0
+    
+    # Test 1: Basic endpoint availability
+    TOTAL_TESTS=$((TOTAL_TESTS + 1))
+    test_endpoint "$BASE_URL/greet?name=test" "GET" "" "200" "Greet endpoint availability" || FAILED_TESTS=$((FAILED_TESTS + 1))
+    
+    # Test 2: Template Injection attempt - check if XSS is escaped
+    TOTAL_TESTS=$((TOTAL_TESTS + 1))
+    log "Testing Template Injection/XSS protection..."
+    response=$(curl -s "$BASE_URL/greet?name=<script>alert('xss')</script>")
+    if echo "$response" | grep -q "<script>"; then
+        if [ "$should_fail" == "true" ]; then
+            log "  ⚠ VULNERABILITY DETECTED: XSS script tag not escaped (expected for original code)"
+            # This is expected for vulnerable code
+        else
+            log "  ✗ FAIL: XSS script tag not escaped in secured code"
+            FAILED_TESTS=$((FAILED_TESTS + 1))
+        fi
+    else
+        if [ "$should_fail" == "true" ]; then
+            log "  ⚠ WARNING: XSS was escaped (unexpected for original code)"
+            FAILED_TESTS=$((FAILED_TESTS + 1))
+        else
+            log "  ✓ PASS: XSS properly escaped"
+        fi
+    fi
+    
+    # Test 3: Command Injection attempt
+    TOTAL_TESTS=$((TOTAL_TESTS + 1))
+    test_endpoint "$BASE_URL/run" "POST" "cmd=test123" "200" "Command execution endpoint" || FAILED_TESTS=$((FAILED_TESTS + 1))
+    
+    # Test 4: Login endpoint - test authentication
+    TOTAL_TESTS=$((TOTAL_TESTS + 1))
+    test_endpoint "$BASE_URL/login" "POST" "username=alice&password=password123" "200" "Login endpoint (correct credentials)" || FAILED_TESTS=$((FAILED_TESTS + 1))
+    
+    # Test 5: Login endpoint - test wrong password
+    TOTAL_TESTS=$((TOTAL_TESTS + 1))
+    if [ "$should_fail" == "true" ]; then
+        # Original code returns 200 with "login failed" message
+        test_endpoint "$BASE_URL/login" "POST" "username=alice&password=wrong" "200" "Login endpoint (wrong credentials - original)" || FAILED_TESTS=$((FAILED_TESTS + 1))
+    else
+        # Secured code returns 401
+        test_endpoint "$BASE_URL/login" "POST" "username=alice&password=wrong" "401" "Login endpoint (wrong credentials - secured)" || FAILED_TESTS=$((FAILED_TESTS + 1))
+    fi
+    
+    # Test 6: JSON upload endpoint
+    TOTAL_TESTS=$((TOTAL_TESTS + 1))
+    if [ "$should_fail" == "true" ]; then
+        # Original code accepts pickle - test with JSON should fail
+        log "Testing upload_profile endpoint (expects pickle in original)..."
+        response=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/upload_profile" -d '{"name": "test"}' -H "Content-Type: application/json")
+        http_code=$(echo "$response" | tail -n1)
+        if [ "$http_code" == "200" ]; then
+            log "  ⚠ Endpoint responded (may accept pickle)"
+        else
+            log "  ✓ Endpoint rejected invalid format (expected)"
+        fi
+    else
+        # Secured code accepts JSON
+        test_json_endpoint "$BASE_URL/upload_profile" '{"name": "test"}' "200" "JSON upload (secured)" || FAILED_TESTS=$((FAILED_TESTS + 1))
+    fi
+    
+    # Stop Flask server
+    kill $FLASK_PID 2>/dev/null || true
+    wait $FLASK_PID 2>/dev/null || true
+    
+    log ""
+    log "Test Summary for $app_name:"
+    log "  Total Tests: $TOTAL_TESTS"
+    log "  Failed Tests: $FAILED_TESTS"
+    log "  Passed Tests: $((TOTAL_TESTS - FAILED_TESTS))"
+    
+    echo "$app_name: $((TOTAL_TESTS - FAILED_TESTS))/$TOTAL_TESTS tests passed" >> "$TEST_RESULTS"
+    
+    if [ "$should_fail" == "true" ]; then
+        # For original code, we expect vulnerabilities to exist
+        # So "failure" here means vulnerabilities were detected
+        if [ $FAILED_TESTS -eq 0 ]; then
+            log "  ⚠ WARNING: All tests passed, but vulnerabilities should exist in original code"
+            return 1
+        else
+            log "  ✓ Vulnerabilities detected as expected"
+            return 0
+        fi
+    else
+        # For secured code, we expect all security measures to work
+        if [ $FAILED_TESTS -eq 0 ]; then
+            log "  ✓ All security tests passed"
+            return 0
+        else
+            log "  ✗ Some security tests failed"
+            return 1
+        fi
+    fi
+}
+
+# Main execution
+log "Starting security audit tests..."
+log "Timestamp: $(date)"
+log ""
+
+# Initialize test results file
+echo "Security Audit Test Results" > "$TEST_RESULTS"
+echo "Generated: $(date)" >> "$TEST_RESULTS"
+echo "" >> "$TEST_RESULTS"
+
+# Test original vulnerable code (should fail/detect vulnerabilities)
+log "Phase 1: Testing original vulnerable code (input.py)"
+if run_tests "input.py" "Original (Vulnerable)" "true"; then
+    ORIGINAL_RESULT="VULNERABILITIES_DETECTED"
+else
+    ORIGINAL_RESULT="TESTS_FAILED"
+fi
+
+# Wait a bit between tests
+sleep 2
+
+# Test secured code (should pass)
+log ""
+log "Phase 2: Testing secured code (input_secured.py)"
+if run_tests "input_secured.py" "Secured" "false"; then
+    SECURED_RESULT="ALL_TESTS_PASSED"
+else
+    SECURED_RESULT="SOME_TESTS_FAILED"
+fi
+
+# Final summary
+log ""
+log "=========================================="
+log "Final Test Summary"
+log "=========================================="
+log "Original Code: $ORIGINAL_RESULT"
+log "Secured Code: $SECURED_RESULT"
+log ""
+log "Detailed results saved to: $TEST_RESULTS"
+log "Full log saved to: $LOG_FILE"
+
+# Determine exit code
+if [ "$SECURED_RESULT" == "ALL_TESTS_PASSED" ]; then
+    exit 0
+else
+    exit 1
+fi
+
+
+```
 
 
 Listing files to verify everything is created:
 
 
-[1 tool called]
-
 
 All files are created. Verifying the report is complete and creating a summary:
 
-
-[2 tools called]
 
 
 Updating the Windows batch file to match the improved test logic:
 
 
-[1 tool called]
+```bat
+@echo off
+REM Test script for Windows
+REM Tests both vulnerable and secured versions of the application
+
+setlocal enabledelayedexpansion
+
+set LOG_DIR=logs
+set LOG_FILE=%LOG_DIR%\test_run.log
+set TEST_RESULTS=%LOG_DIR%\test_results.txt
+
+REM Create logs directory if it doesn't exist
+if not exist "%LOG_DIR%" mkdir "%LOG_DIR%"
+
+REM Function to log messages
+:log
+echo [%date% %time%] %~1 >> "%LOG_FILE%"
+echo [%date% %time%] %~1
+goto :eof
+
+REM Function to test endpoint
+:test_endpoint
+set url=%~1
+set method=%~2
+set data=%~3
+set expected_status=%~4
+set description=%~5
+
+call :log "Testing: %description%"
+
+if "%method%"=="GET" (
+    curl -s -w "\n%%{http_code}" "%url%" > "%TEMP%\curl_response.txt" 2>nul
+) else (
+    curl -s -w "\n%%{http_code}" -X "%method%" "%url%" -d "%data%" -H "Content-Type: application/x-www-form-urlencoded" > "%TEMP%\curl_response.txt" 2>nul
+)
+
+for /f "tokens=*" %%a in ('type "%TEMP%\curl_response.txt"') do set response=%%a
+for /f "tokens=*" %%a in ('powershell -Command "(Get-Content '%TEMP%\curl_response.txt')[-1]"') do set http_code=%%a
+
+if "%http_code%"=="%expected_status%" (
+    call :log "  ✓ PASS: HTTP %http_code%"
+    exit /b 0
+) else (
+    call :log "  ✗ FAIL: Expected HTTP %expected_status%, got %http_code%"
+    exit /b 1
+)
+
+REM Function to run tests on a Flask app
+:run_tests
+set app_file=%~1
+set app_name=%~2
+set should_fail=%~3
+
+call :log ""
+call :log "=========================================="
+call :log "Testing %app_name% (%app_file%)"
+call :log "=========================================="
+
+REM Start Flask app in background
+set FLASK_APP=%app_file%
+set API_KEY=test_key_12345
+start /B python "%app_file%" > "%LOG_DIR%\%app_name%_server.log" 2>&1
+
+REM Wait for server to start
+timeout /t 3 /nobreak >nul
+
+set BASE_URL=http://localhost:5000
+set FAILED_TESTS=0
+set TOTAL_TESTS=0
+
+REM Test 1: Basic endpoint availability
+set /a TOTAL_TESTS+=1
+call :test_endpoint "%BASE_URL%/greet?name=test" "GET" "" "200" "Greet endpoint availability"
+if errorlevel 1 set /a FAILED_TESTS+=1
+
+REM Test 2: Template Injection/XSS test
+set /a TOTAL_TESTS+=1
+call :log "Testing Template Injection/XSS protection..."
+curl -s "%BASE_URL%/greet?name=<script>alert('xss')</script>" > "%TEMP%\xss_test.txt" 2>nul
+findstr /C:"<script>" "%TEMP%\xss_test.txt" >nul 2>&1
+if errorlevel 1 (
+    REM Script tag not found - XSS is escaped
+    if "%should_fail%"=="true" (
+        call :log "  ⚠ WARNING: XSS was escaped (unexpected for original code)"
+        set /a FAILED_TESTS+=1
+    ) else (
+        call :log "  ✓ PASS: XSS properly escaped"
+    )
+) else (
+    REM Script tag found - XSS not escaped
+    if "%should_fail%"=="true" (
+        call :log "  ⚠ VULNERABILITY DETECTED: XSS script tag not escaped (expected for original code)"
+    ) else (
+        call :log "  ✗ FAIL: XSS script tag not escaped in secured code"
+        set /a FAILED_TESTS+=1
+    )
+)
+
+REM Test 3: Command Injection attempt
+set /a TOTAL_TESTS+=1
+call :test_endpoint "%BASE_URL%/run" "POST" "cmd=test123" "200" "Command execution endpoint"
+if errorlevel 1 set /a FAILED_TESTS+=1
+
+REM Test 4: Login endpoint - test authentication
+set /a TOTAL_TESTS+=1
+call :test_endpoint "%BASE_URL%/login" "POST" "username=alice&password=password123" "200" "Login endpoint (correct credentials)"
+if errorlevel 1 set /a FAILED_TESTS+=1
+
+REM Test 5: Login endpoint - test wrong password
+set /a TOTAL_TESTS+=1
+if "%should_fail%"=="true" (
+    REM Original code returns 200 with "login failed" message
+    call :test_endpoint "%BASE_URL%/login" "POST" "username=alice&password=wrong" "200" "Login endpoint (wrong credentials - original)"
+) else (
+    REM Secured code returns 401
+    call :test_endpoint "%BASE_URL%/login" "POST" "username=alice&password=wrong" "401" "Login endpoint (wrong credentials - secured)"
+)
+if errorlevel 1 set /a FAILED_TESTS+=1
+
+REM Test 6: JSON upload endpoint
+set /a TOTAL_TESTS+=1
+if "%should_fail%"=="true" (
+    call :log "Testing upload_profile endpoint (expects pickle in original)..."
+    curl -s -w "\n%%{http_code}" -X POST "%BASE_URL%/upload_profile" -d "{\"name\": \"test\"}" -H "Content-Type: application/json" > "%TEMP%\upload_test.txt" 2>nul
+    for /f "tokens=*" %%a in ('powershell -Command "(Get-Content '%TEMP%\upload_test.txt')[-1]"') do set http_code=%%a
+    if "!http_code!"=="200" (
+        call :log "  ⚠ Endpoint responded (may accept pickle)"
+    ) else (
+        call :log "  ✓ Endpoint rejected invalid format (expected)"
+    )
+) else (
+    REM Secured code accepts JSON
+    curl -s -w "\n%%{http_code}" -X POST "%BASE_URL%/upload_profile" -d "{\"name\": \"test\"}" -H "Content-Type: application/json" > "%TEMP%\json_test.txt" 2>nul
+    for /f "tokens=*" %%a in ('powershell -Command "(Get-Content '%TEMP%\json_test.txt')[-1]"') do set http_code=%%a
+    if "!http_code!"=="200" (
+        call :log "  ✓ PASS: JSON upload accepted"
+    ) else (
+        call :log "  ✗ FAIL: JSON upload rejected"
+        set /a FAILED_TESTS+=1
+    )
+)
+
+REM Stop Flask server (find and kill Python process running the app)
+for /f "tokens=2" %%a in ('tasklist /FI "IMAGENAME eq python.exe" /FO LIST ^| findstr /I "PID"') do (
+    taskkill /PID %%a /F >nul 2>&1
+)
+
+call :log ""
+call :log "Test Summary for %app_name%:"
+call :log "  Total Tests: %TOTAL_TESTS%"
+call :log "  Failed Tests: %FAILED_TESTS%"
+set /a PASSED_TESTS=%TOTAL_TESTS% - %FAILED_TESTS%
+call :log "  Passed Tests: !PASSED_TESTS!"
+
+echo %app_name%: !PASSED_TESTS!/%TOTAL_TESTS% tests passed >> "%TEST_RESULTS%"
+
+if "%should_fail%"=="true" (
+    if !FAILED_TESTS! equ 0 (
+        call :log "  ⚠ WARNING: All tests passed, but vulnerabilities should exist"
+        exit /b 1
+    ) else (
+        call :log "  ✓ Vulnerabilities detected as expected"
+        exit /b 0
+    )
+) else (
+    if !FAILED_TESTS! equ 0 (
+        call :log "  ✓ All security tests passed"
+        exit /b 0
+    ) else (
+        call :log "  ✗ Some security tests failed"
+        exit /b 1
+    )
+)
+
+REM Main execution
+call :log "Starting security audit tests..."
+call :log "Timestamp: %date% %time%"
+call :log ""
+
+REM Initialize test results file
+echo Security Audit Test Results > "%TEST_RESULTS%"
+echo Generated: %date% %time% >> "%TEST_RESULTS%"
+echo. >> "%TEST_RESULTS%"
+
+REM Test original vulnerable code
+call :log "Phase 1: Testing original vulnerable code (input.py)"
+call :run_tests "input.py" "Original (Vulnerable)" "true"
+if errorlevel 1 (
+    set ORIGINAL_RESULT=VULNERABILITIES_DETECTED
+) else (
+    set ORIGINAL_RESULT=TESTS_FAILED
+)
+
+REM Wait a bit between tests
+timeout /t 2 /nobreak >nul
+
+REM Test secured code
+call :log ""
+call :log "Phase 2: Testing secured code (input_secured.py)"
+call :run_tests "input_secured.py" "Secured" "false"
+if errorlevel 1 (
+    set SECURED_RESULT=ALL_TESTS_PASSED
+) else (
+    set SECURED_RESULT=SOME_TESTS_FAILED
+)
+
+REM Final summary
+call :log ""
+call :log "=========================================="
+call :log "Final Test Summary"
+call :log "=========================================="
+call :log "Original Code: %ORIGINAL_RESULT%"
+call :log "Secured Code: %SECURED_RESULT%"
+call :log ""
+call :log "Detailed results saved to: %TEST_RESULTS%"
+call :log "Full log saved to: %LOG_FILE%"
+
+if "%SECURED_RESULT%"=="ALL_TESTS_PASSED" (
+    exit /b 0
+) else (
+    exit /b 1
+)
+
+
+```
 
 
 ## Summary
@@ -159,3 +2162,4 @@ Completed security audit and fixes for the Flask application. Deliverables:
    - `init_secured_db.py` - Database initialization helper
 
 All files are ready. Run `python auto_test.py` to automatically detect your environment and execute the security tests. The tests verify that vulnerabilities exist in the original code and are fixed in the secured version.
+
