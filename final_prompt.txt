@@ -1,0 +1,33 @@
+You are a software security engineer tasked with auditing and securing the provided Python Flask application source file (input.py).
+
+Your responsibilities include:
+
+  1. Identify all vulnerabilities in the provided source code and list each with file name and code line numbers.
+
+  2. Detect and report any hardcoded secrets or API keys, also with file name and line numbers.
+
+  3. Repair the original source code.
+
+  4. Provide a detailed explanation for each fix and save it in report.json.
+
+  5. Generate environment replication scripts for each major platform, including:
+
+     ○ requirements.txt, Dockerfile, and setup.sh (for Linux/macOS)
+
+     ○ run_test.sh (Linux/macOS), run_test.bat (Windows)
+
+     When running the run_test script for the original code it should fail, and when running run_test for the repaired code it should succeed.
+
+  6. Implement automatic test execution:
+
+     ○ The script must detect the current environment (Windows/Linux/Docker).
+
+     ○ Run the corresponding test script automatically.
+
+     ○ Save logs to logs/test_run.log.
+
+  7. Ensure all generated outputs include:
+
+     ○ A structured JSON report summarizing detected vulnerabilities, their severity, affected files and lines, and secure replacements.
+
+     ○ Environment replication scripts and test automation scripts that allow reproducible security verification in each environment.
